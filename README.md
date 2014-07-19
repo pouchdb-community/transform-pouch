@@ -80,7 +80,7 @@ function decrypt(text) {
 
 Obviously you would want to change the `'password'` to be something only the user knows!
 
-Next, let's set up our pouch filters:
+Next, let's set up our filters:
 
 ```js
 pouch.filter({
@@ -103,7 +103,7 @@ pouch.filter({
 });
 ```
 
-And now the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `filters`.  You'll see documents like:
+Now, the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `filters`.  You'll see documents like:
 
 ```js
 {
