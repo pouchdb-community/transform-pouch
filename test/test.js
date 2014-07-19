@@ -115,6 +115,40 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('filters on bulk_docs', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs([{_id: 'toto'}, {_id: 'lala'}]).then(function (res) {
+        return db.get(res[0].id).then(function (doc) {
+          doc.foo.should.equal('toto_baz');
+        }).then(function () {
+          return db.get(res[1].id);
+        }).then(function (doc) {
+          doc.foo.should.equal('lala_baz');
+        });
+      });
+    });
 
+    it('filters on bulk_docs, object style', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function (res) {
+        return db.get(res[0].id).then(function (doc) {
+          doc.foo.should.equal('toto_baz');
+        }).then(function () {
+          return db.get(res[1].id);
+        }).then(function (doc) {
+          doc.foo.should.equal('lala_baz');
+        });
+      });
+    });
   });
 }

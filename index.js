@@ -5,9 +5,18 @@ var utils = require('./pouch-utils');
 exports.filter = function (config) {
   var db = this;
 
-  var incoming = config.incoming || function (doc) { return doc; };
-  var outgoing = config.outgoing || function (doc) { return doc; };
-
+  var incoming = function (doc) {
+    if (config.incoming) {
+      return config.incoming(utils.clone(doc));
+    }
+    return doc;
+  };
+  var outgoing = function (doc) {
+    if (config.outgoing) {
+      return config.outgoing(utils.clone(doc));
+    }
+    return doc;
+  };
 
   //
   // put
@@ -55,7 +64,23 @@ exports.filter = function (config) {
     origGet.apply(db, [id, opts, callback]);
   });
 
+  //
+  // bulkDocs
+  //
+  var origBulkDocs = db.bulkDocs;
+  db.bulkDocs = utils.getArguments(function (args) {
+    var docsObj = args[0];
 
+    docsObj = Array.isArray(docsObj) ? docsObj.slice() : utils.clone(docsObj);
+    var docs = Array.isArray(docsObj) ? docsObj : docsObj.docs;
+
+    for (var i = 0; i < docs.length; i++) {
+      docs[i] = incoming(docs[i]);
+    }
+
+    args[0] = docsObj;
+    return origBulkDocs.apply(db, args);
+  });
 };
 
 /* istanbul ignore next */
