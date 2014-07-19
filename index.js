@@ -81,6 +81,31 @@ exports.filter = function (config) {
     args[0] = docsObj;
     return origBulkDocs.apply(db, args);
   });
+
+  //
+  // allDocs
+  //
+  var origAllDocs = db.allDocs;
+  db.allDocs = utils.toPromise(function (opts, origCallback) {
+    if (typeof opts === 'function') {
+      origCallback = opts;
+      opts = {};
+    }
+
+    var callback = function (err, res) {
+      /* istanbul ignore next */
+      if (err) {
+        return origCallback(err);
+      }
+      res.rows.forEach(function (row) {
+        if (row.doc) {
+          row.doc = outgoing(row.doc);
+        }
+      });
+      origCallback(null, res);
+    };
+    origAllDocs.apply(db, [opts, callback]);
+  });
 };
 
 /* istanbul ignore next */

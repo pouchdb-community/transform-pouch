@@ -150,5 +150,53 @@ function tests(dbName, dbType) {
         });
       });
     });
+
+    it('filters on all_docs, incoming', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.allDocs({include_docs: true}).then(function (res) {
+          res.rows.should.have.length(2);
+          res.rows[0].doc.foo.should.equal('lala_baz');
+          res.rows[1].doc.foo.should.equal('toto_baz');
+        });
+      });
+    });
+
+    it('filters on all_docs, outgoing', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.allDocs({include_docs: true}).then(function (res) {
+          res.rows.should.have.length(2);
+          res.rows[0].doc.foo.should.equal('lala_baz');
+          res.rows[1].doc.foo.should.equal('toto_baz');
+        });
+      });
+    });
+
+    it('filters on all_docs no opts, outgoing', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.allDocs().then(function (res) {
+          res.rows.should.have.length(2);
+          should.not.exist(res.rows[0].doc);
+          should.not.exist(res.rows[1].doc);
+        });
+      });
+    });
   });
 }
