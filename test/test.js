@@ -3,19 +3,13 @@
 
 var Pouch = require('pouchdb');
 
-//
-// your plugin goes here
-//
-var helloPlugin = require('../');
-Pouch.plugin(helloPlugin);
+var plugin = require('../');
+Pouch.plugin(plugin);
 
 var chai = require('chai');
 chai.use(require("chai-as-promised"));
 
-//
-// more variables you might want
-//
-chai.should(); // var should = chai.should();
+var should = chai.should();
 require('bluebird'); // var Promise = require('bluebird');
 
 var dbs;
@@ -32,20 +26,76 @@ dbs.split(',').forEach(function (db) {
 });
 
 function tests(dbName, dbType) {
+  describe(dbType + ': basic tests', function () {
 
-  var db;
+    var db;
 
-  beforeEach(function () {
-    db = new Pouch(dbName);
-    return db;
-  });
-  afterEach(function () {
-    return Pouch.destroy(dbName);
-  });
-  describe(dbType + ': hello test suite', function () {
-    it('should say hello', function () {
-      return db.sayHello().then(function (response) {
-        response.should.equal('hello');
+    beforeEach(function () {
+      db = new Pouch(dbName);
+      return db;
+    });
+    afterEach(function () {
+      return Pouch.destroy(dbName);
+    });
+
+    it('filters on PUT', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo');
+      }).then(function (doc) {
+        doc._id.should.equal('foo');
+        doc.foo.should.equal('baz');
+      });
+    });
+
+    it('filters on GET', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo');
+      }).then(function (doc) {
+          doc._id.should.equal('foo');
+          doc.foo.should.equal('baz');
+        });
+    });
+
+    it('filters on GET with options', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo', {});
+      }).then(function (doc) {
+          doc._id.should.equal('foo');
+          doc.foo.should.equal('baz');
+        });
+    });
+
+    it('filters on GET, not found', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('quux');
+      }).then(function (doc) {
+        should.not.exist(doc);
+      }).catch(function (err) {
+        should.exist(err);
       });
     });
   });
