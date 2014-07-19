@@ -470,6 +470,27 @@ function tests(dbName, dbType) {
         res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'));
       });
     });
+
+    it('test encryption/decryption with bulkdocs/changes complete', function () {
+      filter(db);
+
+      function changesCompletePromise(db, opts) {
+        return new Promise(function (resolve, reject) {
+          db.changes(opts).on('complete', resolve).on('error', reject);
+        });
+      }
+
+      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
+        return changesCompletePromise(db, {include_docs: true});
+      }).then(function (res) {
+        res.results.should.have.length(1);
+        res.results[0].doc.secret.should.equal('my super secret text!');
+        return changesCompletePromise(new Pouch(dbName), {include_docs: true});
+      }).then(function (res) {
+        res.results.should.have.length(1);
+        res.results[0].doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
   });
 
   describe(dbType + ': replication tests', function () {

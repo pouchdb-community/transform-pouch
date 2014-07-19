@@ -1,6 +1,7 @@
 'use strict';
 
 var utils = require('./pouch-utils');
+var EE = require('events').EventEmitter;
 
 exports.filter = function (config) {
   var db = this;
@@ -137,6 +138,61 @@ exports.filter = function (config) {
     origAllDocs.apply(db, [opts, callback]);
   });
 
+  //
+  // changes
+  //
+  var origChanges = db.changes;
+  utils.inherits(Changes, EE);
+  function Changes(opts, callback) {
+    var self = this;
+    EE.call(this);
+    if (typeof opts === 'function') {
+      callback = opts;
+      opts = {};
+    }
+
+    function modifyDoc(change) {
+      if (change.doc) {
+        change.doc = outgoing(change.doc);
+      }
+      return change;
+    }
+
+    var delegate = origChanges.apply(db, [opts, callback]);
+
+    delegate.on('error', function (err) {
+      self.emit('error', err);
+    });
+    delegate.on('complete', function (res) {
+      self.emit('complete', res);
+    });
+    delegate.on('destroyed', function (res) {
+      self.emit('destroyed', res);
+    });
+    delegate.on('uptodate', function (res) {
+      if (res.results) {
+        res.results = res.results.map(modifyDoc);
+      }
+      self.emit('uptodate', res);
+    });
+
+    // CRUD
+    delegate.on('change', function (res) {
+      self.emit('change', modifyDoc(res));
+    });
+    delegate.on('update', function (res) {
+      self.emit('update', res);
+    });
+    delegate.on('delete', function (res) {
+      self.emit('delete', res);
+    });
+    delegate.on('create', function (res) {
+      self.emit('create', res);
+    });
+  }
+  /*db.changes = function (opts, callback) {
+    return new Changes(opts, callback);
+  };*/
 };
 
 /* istanbul ignore next */
