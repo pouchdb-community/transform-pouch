@@ -261,5 +261,23 @@ function tests(dbName, dbType) {
         });
       });
     });
+
+    it('filters ingoing and outgoing', function () {
+      db.filter({
+        ingoing: function (doc) {
+          doc.foo = doc.foo.toUpperCase();
+          return doc;
+        },
+        outgoing: function (doc) {
+          doc.foo = doc.foo.toLowerCase();
+          return doc;
+        }
+      });
+      return db.put({_id: 'doc', foo: 'bar'}).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.foo.should.equal('bar');
+      });
+    });
   });
 }
