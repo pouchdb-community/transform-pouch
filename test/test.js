@@ -53,6 +53,22 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('filters on POST', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.post({}).then(function (res) {
+        return db.get(res.id);
+      }).then(function (doc) {
+        doc._id.should.be.a('string');
+        doc.foo.should.equal('baz');
+      });
+    });
+
+
     it('filters on GET', function () {
       db.filter({
         outgoing: function (doc) {
@@ -98,5 +114,7 @@ function tests(dbName, dbType) {
         should.exist(err);
       });
     });
+
+
   });
 }

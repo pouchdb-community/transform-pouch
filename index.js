@@ -23,6 +23,19 @@ exports.filter = function (config) {
   });
 
   //
+  // post
+  //
+  var origPost = db.post;
+  db.post = utils.getArguments(function (args) {
+    var doc = args[0];
+
+    doc = incoming(doc);
+
+    args[0] = doc;
+    return origPost.apply(db, args);
+  });
+
+  //
   // get
   //
   var origGet = db.get;
@@ -41,6 +54,8 @@ exports.filter = function (config) {
     };
     origGet.apply(db, [id, opts, callback]);
   });
+
+
 };
 
 /* istanbul ignore next */
