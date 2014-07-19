@@ -198,5 +198,68 @@ function tests(dbName, dbType) {
         });
       });
     });
+
+    it('filters on query, incoming', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      var mapFun = {
+        map: function (doc) {
+          emit(doc._id);
+        }
+      };
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.query(mapFun, {include_docs: true}).then(function (res) {
+          res.rows.should.have.length(2);
+          res.rows[0].doc.foo.should.equal('lala_baz');
+          res.rows[1].doc.foo.should.equal('toto_baz');
+        });
+      });
+    });
+
+    it('filters on query, outgoing', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      var mapFun = {
+        map: function (doc) {
+          emit(doc._id);
+        }
+      };
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.query(mapFun, {include_docs: true}).then(function (res) {
+          res.rows.should.have.length(2);
+          res.rows[0].doc.foo.should.equal('lala_baz');
+          res.rows[1].doc.foo.should.equal('toto_baz');
+        });
+      });
+    });
+
+    it('filters on query no opts, outgoing', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      var mapFun = {
+        map: function (doc) {
+          emit(doc._id);
+        }
+      };
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
+        return db.query(mapFun).then(function (res) {
+          res.rows.should.have.length(2);
+          should.not.exist(res.rows[0].doc);
+          should.not.exist(res.rows[1].doc);
+        });
+      });
+    });
   });
 }

@@ -106,6 +106,31 @@ exports.filter = function (config) {
     };
     origAllDocs.apply(db, [opts, callback]);
   });
+
+  //
+  // query
+  //
+  var origQuery = db.query;
+  db.query = utils.toPromise(function (fun, opts, origCallback) {
+    if (typeof opts === 'function') {
+      origCallback = opts;
+      opts = {};
+    }
+
+    var callback = function (err, res) {
+      /* istanbul ignore next */
+      if (err) {
+        return origCallback(err);
+      }
+      res.rows.forEach(function (row) {
+        if (row.doc) {
+          row.doc = outgoing(row.doc);
+        }
+      });
+      origCallback(null, res);
+    };
+    origQuery.apply(db, [fun, opts, callback]);
+  });
 };
 
 /* istanbul ignore next */
