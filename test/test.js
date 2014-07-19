@@ -450,7 +450,7 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('test encryption/decryption with bulkdocs/alldocs', function () {
+    it('test encryption/decryption with bulkdocs/query', function () {
       filter(db);
 
       var mapFun = {
