@@ -279,5 +279,91 @@ function tests(dbName, dbType) {
         doc.foo.should.equal('bar');
       });
     });
+
+    if (typeof process !== 'undefined' && !process.browser) {
+      it('test encryption/decryption (node)', function () {
+
+        var crypto = require('crypto');
+
+        function encrypt(text) {
+          var cipher = crypto.createCipher('aes-256-cbc', 'password');
+          var crypted = cipher.update(text, 'utf8', 'base64');
+          return crypted + cipher.final('base64');
+        }
+
+        function decrypt(text) {
+          var decipher = crypto.createDecipher('aes-256-cbc', 'password');
+          var dec = decipher.update(text, 'base64', 'utf8');
+          return dec + decipher.final('utf8');
+        }
+
+        db.filter({
+          incoming: function (doc) {
+            Object.keys(doc).forEach(function (field) {
+              if (field !== '_id' && field !== '_rev') {
+                doc[field] = encrypt(doc[field]);
+              }
+            });
+            return doc;
+          },
+          outgoing: function (doc) {
+            Object.keys(doc).forEach(function (field) {
+              if (field !== '_id' && field !== '_rev') {
+                doc[field] = decrypt(doc[field]);
+              }
+            });
+            return doc;
+          }
+        });
+
+        return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
+          return db.get('doc');
+        }).then(function (doc) {
+          doc.secret.should.equal('my super secret text!');
+          return new Pouch(dbName).get('doc');
+        }).then(function (doc) {
+          doc.secret.should.equal('JB/ga3ItEZIUum4UpPSjDF+o78atHpZUsVD7JIELlaE=');
+        });
+      });
+    } else { // browser
+      it('test compression/decompression', function () {
+
+        function compress(text) {
+          return btoa(text);
+        }
+
+        function uncompress(text) {
+          return atob(text);
+        }
+
+        db.filter({
+          incoming: function (doc) {
+            Object.keys(doc).forEach(function (field) {
+              if (field !== '_id' && field !== '_rev') {
+                doc[field] = compress(doc[field]);
+              }
+            });
+            return doc;
+          },
+          outgoing: function (doc) {
+            Object.keys(doc).forEach(function (field) {
+              if (field !== '_id' && field !== '_rev') {
+                doc[field] = uncompress(doc[field]);
+              }
+            });
+            return doc;
+          }
+        });
+
+        return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
+          return db.get('doc');
+        }).then(function (doc) {
+            doc.secret.should.equal('my super secret text!');
+            return new Pouch(dbName).get('doc');
+          }).then(function (doc) {
+            doc.secret.should.equal('bXkgc3VwZXIgc2VjcmV0IHRleHQh');
+          });
+      });
+    }
   });
 }

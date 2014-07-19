@@ -18,31 +18,33 @@ exports.filter = function (config) {
     return doc;
   };
 
-  //
-  // put
-  //
-  var origPut = db.put;
-  db.put = utils.getArguments(function (args) {
-    var doc = args[0];
+  if (db.type() === 'http') {
+    //
+    // put
+    //
+    var origPut = db.put;
+    db.put = utils.getArguments(function (args) {
+      var doc = args[0];
 
-    doc = incoming(doc);
+      doc = incoming(doc);
 
-    args[0] = doc;
-    return origPut.apply(db, args);
-  });
+      args[0] = doc;
+      return origPut.apply(db, args);
+    });
 
-  //
-  // post
-  //
-  var origPost = db.post;
-  db.post = utils.getArguments(function (args) {
-    var doc = args[0];
+    //
+    // post
+    //
+    var origPost = db.post;
+    db.post = utils.getArguments(function (args) {
+      var doc = args[0];
 
-    doc = incoming(doc);
+      doc = incoming(doc);
 
-    args[0] = doc;
-    return origPost.apply(db, args);
-  });
+      args[0] = doc;
+      return origPost.apply(db, args);
+    });
+  }
 
   //
   // get
@@ -63,6 +65,7 @@ exports.filter = function (config) {
     };
     origGet.apply(db, [id, opts, callback]);
   });
+
 
   //
   // bulkDocs

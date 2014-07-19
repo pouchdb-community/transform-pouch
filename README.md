@@ -1,43 +1,133 @@
-PouchDB Plugin Seed
+Filter Pouch
 =====
 
-[![Build Status](https://travis-ci.org/pouchdb/plugin-seed.svg)](https://travis-ci.org/pouchdb/plugin-seed)
+[![Build Status](https://travis-ci.org/nolanlawson/filter-pouch.svg)](https://travis-ci.org/nolanlawson/filter-pouch)
 
-Fork this project to build your first PouchDB plugin.  It contains everything you need to test in Node, WebSQL, and IndexedDB.  It also includes a Travis config file so you
-can automatically run the tests in Travis.
+Apply a **filter function** to documents before and after they are stored in the database. These functions apply invisibly to `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, and also to documents added via replication.
+
+There are a few different uses for this:
+
+* Encrypt and decript sensitive document fields
+* Compress and uncompress large content before storing
+* Remove fields, add fields, or modify user-provided fields
+
+Usage
+----------
+
+To use this plugin, include it after `pouchdb.js` in your HTML page:
+
+```html
+<script src="pouchdb.js"></script>
+<script src="pouchdb.filter-pouch.js"></script>
+```
+
+Or to use it in Node.js, just npm install it:
+
+```
+npm install filter-pouch
+```
+
+And then attach it to the `PouchDB` object:
+
+```js
+var PouchDB = require('pouchdb');
+PouchDB.plugin(require('filter-pouch'));
+```
+
+API
+--------
+
+When you instantiate a new DB, initiate the filtering like so:
+
+```js
+var pouch = new PouchDB('mydb');
+pouch.filter({
+  incoming: function (doc) {
+    // do something to the document before storage
+    return doc;
+  }
+  outgoing: function (doc) {
+    // do something to the document before storage
+    return doc;
+  }
+});
+```
+
+You can provide an `incoming` function, an `outgoing` function, or both.
+
+Your filter functions **must** return the document itself or a new document.
+
+Example: Encryption
+----------
+
+Using the Node.js crypto library (you would need something different in a browser), let's first set up our encrypt/decrypt functions:
+
+```js
+var crypto = require('crypto');
+
+function encrypt(text) {
+  var cipher = crypto.createCipher('aes-256-cbc', 'password');
+  var crypted = cipher.update(text, 'utf8', 'base64');
+  return crypted + cipher.final('base64');
+}
+
+function decrypt(text) {
+  var decipher = crypto.createDecipher('aes-256-cbc', 'password');
+  var dec = decipher.update(text, 'base64', 'utf8');
+  return dec + decipher.final('utf8');
+}
+```
+
+Obviously you would want to change the `'password'` to be something only the user knows!
+
+Next, let's set up our pouch filters:
+
+```js
+pouch.filter({
+  incoming: function (doc) {
+    Object.keys(doc).forEach(function (field) {
+      if (field !== '_id' && field !== '_rev') {
+        doc[field] = encrypt(doc[field]);
+      }
+    });
+    return doc;
+  },
+  outgoing: function (doc) {
+    Object.keys(doc).forEach(function (field) {
+      if (field !== '_id' && field !== '_rev') {
+        doc[field] = decrypt(doc[field]);
+      }
+    });
+    return doc;
+  }
+});
+```
+
+And now the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `filters`.  You'll see documents like:
+
+```js
+{
+  secret: 'YrAtAEbvp0bPLil8EpbNeA==',
+  _id: 'doc',
+  _rev: '1-bfc37cd00225f68671fe3187c054f9e3'
+}
+```
+
+whereas privileged users will see:
+
+```js
+{
+  secret: 'my super secret text!',
+  _id: 'doc',
+  _rev: '1-bfc37cd00225f68671fe3187c054f9e3'
+}
+```
 
 Building
 ----
     npm install
     npm run build
 
-Your plugin is now located at `dist/pouchdb.mypluginname.js` and `dist/pouchdb.mypluginname.min.js` and is ready for distribution.
-
-Getting Started
--------
-
-**First**, change the `name` in `package.json` to whatever you want to call your plugin.  Change the `build` script so that it writes to the desired filename (e.g. `pouchdb.mypluginname.js`).  Also, change the authors, description, git repo, etc.
-
-**Next**, modify the `index.js` to do whatever you want your plugin to do.  Right now it just adds a `pouch.sayHello()` function that says hello:
-
-```js
-exports.sayHello = utils.toPromise(function (callback) {
-  callback(null, 'hello');
-});
-```
-
-**Optionally**, you can add some tests in `tests/test.js`. These tests will be run both in the local database and a remote CouchDB, which is expected to be running at localhost:5984 in "Admin party" mode.
-
-The sample test is:
-
-```js
-
-it('should say hello', function () {
-  return db.sayHello().then(function (response) {
-    response.should.equal('hello');
-  });
-});
-```
 
 Testing
 ----
@@ -51,9 +141,6 @@ This will run the tests in Node using LevelDB:
 You can also check for 100% code coverage using:
 
     npm run coverage
-
-If you don't like the coverage results, change the values from 100 to something else in `package.json`, or add `/*istanbul ignore */` comments.
-
 
 If you have mocha installed globally you can run single test with:
 ```
@@ -76,28 +163,3 @@ You can run e.g.
     CLIENT=selenium:phantomjs npm test
 
 This will run the tests automatically and the process will exit with a 0 or a 1 when it's done. Firefox uses IndexedDB, and PhantomJS uses WebSQL.
-
-What to tell your users
---------
-
-Below is some boilerplate you can use for when you want a real README for your users.
-
-To use this plugin, include it after `pouchdb.js` in your HTML page:
-
-```html
-<script src="pouchdb.js"></script>
-<script src="pouchdb.mypluginname.js"></script>
-```
-
-Or to use it in Node.js, just npm install it:
-
-```
-npm install pouchdb-myplugin
-```
-
-And then attach it to the `PouchDB` object:
-
-```js
-var PouchDB = require('pouchdb');
-PouchDB.plugin(require('pouchdb-myplugin'));
-```
