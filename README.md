@@ -3,7 +3,7 @@ Filter Pouch
 
 [![Build Status](https://travis-ci.org/nolanlawson/filter-pouch.svg)](https://travis-ci.org/nolanlawson/filter-pouch)
 
-Apply a **filter function** to documents before and after they are stored in the database. These functions apply invisibly to `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, and also to documents added via replication.
+Apply a *filter function* to documents before and after they are stored in the database. These functions apply invisibly to `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, and also to documents added via replication.
 
 There are a few different uses for this:
 
