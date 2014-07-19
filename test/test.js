@@ -10,7 +10,7 @@ var chai = require('chai');
 chai.use(require("chai-as-promised"));
 
 var should = chai.should();
-require('bluebird'); // var Promise = require('bluebird');
+var Promise = require('bluebird');
 
 var dbs;
 if (process.browser) {
@@ -79,9 +79,9 @@ function tests(dbName, dbType) {
       return db.put({_id: 'foo'}).then(function () {
         return db.get('foo');
       }).then(function (doc) {
-          doc._id.should.equal('foo');
-          doc.foo.should.equal('baz');
-        });
+        doc._id.should.equal('foo');
+        doc.foo.should.equal('baz');
+      });
     });
 
     it('filters on GET with options', function () {
@@ -94,9 +94,24 @@ function tests(dbName, dbType) {
       return db.put({_id: 'foo'}).then(function () {
         return db.get('foo', {});
       }).then(function (doc) {
-          doc._id.should.equal('foo');
-          doc.foo.should.equal('baz');
-        });
+        doc._id.should.equal('foo');
+        doc.foo.should.equal('baz');
+      });
+    });
+
+    it('filters on GET with missing open_revs', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo', {revs: true, open_revs: ['1-DNE']});
+      }).then(function (docs) {
+        docs.should.have.length(1);
+        docs[0].missing.should.equal('1-DNE');
+      });
     });
 
     it('filters on GET, not found', function () {
@@ -279,91 +294,177 @@ function tests(dbName, dbType) {
         doc.foo.should.equal('bar');
       });
     });
+  });
 
+  describe(dbType + ': advanced tests', function () {
+
+    var db;
+
+    beforeEach(function () {
+      db = new Pouch(dbName);
+      return db;
+    });
+    afterEach(function () {
+      return Pouch.destroy(dbName);
+    });
+
+    var encrypt;
+    var decrypt;
     if (typeof process !== 'undefined' && !process.browser) {
-      it('test encryption/decryption (node)', function () {
+      var crypto = require('crypto');
 
-        var crypto = require('crypto');
+      encrypt = function (text) {
+        var cipher = crypto.createCipher('aes-256-cbc', 'password');
+        var crypted = cipher.update(text, 'utf8', 'base64');
+        return crypted + cipher.final('base64');
+      };
 
-        function encrypt(text) {
-          var cipher = crypto.createCipher('aes-256-cbc', 'password');
-          var crypted = cipher.update(text, 'utf8', 'base64');
-          return crypted + cipher.final('base64');
-        }
-
-        function decrypt(text) {
-          var decipher = crypto.createDecipher('aes-256-cbc', 'password');
-          var dec = decipher.update(text, 'base64', 'utf8');
-          return dec + decipher.final('utf8');
-        }
-
-        db.filter({
-          incoming: function (doc) {
-            Object.keys(doc).forEach(function (field) {
-              if (field !== '_id' && field !== '_rev') {
-                doc[field] = encrypt(doc[field]);
-              }
-            });
-            return doc;
-          },
-          outgoing: function (doc) {
-            Object.keys(doc).forEach(function (field) {
-              if (field !== '_id' && field !== '_rev') {
-                doc[field] = decrypt(doc[field]);
-              }
-            });
-            return doc;
-          }
-        });
-
-        return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
-          return db.get('doc');
-        }).then(function (doc) {
-          doc.secret.should.equal('my super secret text!');
-          return new Pouch(dbName).get('doc');
-        }).then(function (doc) {
-          doc.secret.should.equal('JB/ga3ItEZIUum4UpPSjDF+o78atHpZUsVD7JIELlaE=');
-        });
-      });
+      decrypt = function (text) {
+        var decipher = crypto.createDecipher('aes-256-cbc', 'password');
+        var dec = decipher.update(text, 'base64', 'utf8');
+        return dec + decipher.final('utf8');
+      };
     } else { // browser
-      it('test compression/decompression', function () {
+      encrypt = btoa;
+      decrypt = atob;
+    }
 
-        function compress(text) {
-          return btoa(text);
-        }
-
-        function uncompress(text) {
-          return atob(text);
-        }
-
-        db.filter({
-          incoming: function (doc) {
-            Object.keys(doc).forEach(function (field) {
-              if (field !== '_id' && field !== '_rev') {
-                doc[field] = compress(doc[field]);
-              }
-            });
-            return doc;
-          },
-          outgoing: function (doc) {
-            Object.keys(doc).forEach(function (field) {
-              if (field !== '_id' && field !== '_rev') {
-                doc[field] = uncompress(doc[field]);
-              }
-            });
-            return doc;
-          }
-        });
-
-        return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
-          return db.get('doc');
-        }).then(function (doc) {
-            doc.secret.should.equal('my super secret text!');
-            return new Pouch(dbName).get('doc');
-          }).then(function (doc) {
-            doc.secret.should.equal('bXkgc3VwZXIgc2VjcmV0IHRleHQh');
+    function filter(db) {
+      db.filter({
+        incoming: function (doc) {
+          Object.keys(doc).forEach(function (field) {
+            if (field !== '_id' && field !== '_rev') {
+              doc[field] = encrypt(doc[field]);
+            }
           });
+          return doc;
+        },
+        outgoing: function (doc) {
+          Object.keys(doc).forEach(function (field) {
+            if (field !== '_id' && field !== '_rev') {
+              doc[field] = decrypt(doc[field]);
+            }
+          });
+          return doc;
+        }
       });
     }
+
+    it('test encryption/decryption', function () {
+      filter(db);
+      return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.secret.should.equal('my super secret text!');
+        return new Pouch(dbName).get('doc');
+      }).then(function (doc) {
+        doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
+
+    it('test encryption/decryption with posts', function () {
+      filter(db);
+      var id;
+      return db.post({secret: 'my super secret text!'}).then(function (res) {
+        id = res.id;
+        return db.get(res.id);
+      }).then(function (doc) {
+        doc.secret.should.equal('my super secret text!');
+        return new Pouch(dbName).get(id);
+      }).then(function (doc) {
+        doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
+
+    it('test encryption/decryption with bulkdocs/alldocs', function () {
+      filter(db);
+      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
+        return db.allDocs({keys: ['doc'], include_docs: true});
+      }).then(function (res) {
+        res.rows.should.have.length(1);
+        res.rows[0].doc.secret.should.equal('my super secret text!');
+        return new Pouch(dbName).allDocs({keys: ['doc'], include_docs: true});
+      }).then(function (res) {
+        res.rows.should.have.length(1);
+        res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
+
+    it('test encryption/decryption with bulkdocs/alldocs', function () {
+      filter(db);
+
+      var mapFun = {
+        map: function (doc) {
+          emit(doc._id);
+        }
+      };
+
+      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
+        return db.query(mapFun, {keys: ['doc'], include_docs: true});
+      }).then(function (res) {
+        res.rows.should.have.length(1);
+        res.rows[0].doc.secret.should.equal('my super secret text!');
+        return new Pouch(dbName).query(mapFun, {keys: ['doc'], include_docs: true});
+      }).then(function (res) {
+        res.rows.should.have.length(1);
+        res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
+  });
+
+  describe(dbType + ': replication tests', function () {
+
+    var db;
+    var remote;
+
+    beforeEach(function () {
+
+      db = new Pouch(dbName);
+      remote = new Pouch(dbName + '_other');
+    });
+
+    afterEach(function () {
+      return Pouch.destroy(dbName).then(function () {
+        return Pouch.destroy(dbName + '_other');
+      });
+    });
+
+    it('test replication filters incoming', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+
+      return remote.put({_id: 'doc'}).then(function () {
+        return new Promise(function (resolve, reject) {
+          remote.replicate.to(db).on('complete', resolve).on('error', reject);
+        });
+      }).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.foo.should.equal('baz');
+      });
+    });
+
+    it('test replication filters outgoing', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+
+      return db.put({_id: 'doc'}).then(function () {
+        return new Promise(function (resolve, reject) {
+          db.replicate.to(remote).on('complete', resolve).on('error', reject);
+        });
+      }).then(function () {
+        return remote.get('doc');
+      }).then(function (doc) {
+        doc.foo.should.equal('baz');
+      });
+    });
   });
 }

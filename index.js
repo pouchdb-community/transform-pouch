@@ -31,18 +31,29 @@ exports.filter = function (config) {
       args[0] = doc;
       return origPut.apply(db, args);
     });
-
     //
-    // post
+    // query
     //
-    var origPost = db.post;
-    db.post = utils.getArguments(function (args) {
-      var doc = args[0];
+    var origQuery = db.query;
+    db.query = utils.toPromise(function (fun, opts, origCallback) {
+      if (typeof opts === 'function') {
+        origCallback = opts;
+        opts = {};
+      }
 
-      doc = incoming(doc);
-
-      args[0] = doc;
-      return origPost.apply(db, args);
+      var callback = function (err, res) {
+        /* istanbul ignore next */
+        if (err) {
+          return origCallback(err);
+        }
+        res.rows.forEach(function (row) {
+          if (row.doc) {
+            row.doc = outgoing(row.doc);
+          }
+        });
+        origCallback(null, res);
+      };
+      origQuery.apply(db, [fun, opts, callback]);
     });
   }
 
@@ -60,7 +71,17 @@ exports.filter = function (config) {
       if (err) {
         return origCallback(err);
       }
-      res = outgoing(res);
+
+      if (Array.isArray(res)) {
+        // open_revs style, it's a list of docs
+        res.forEach(function (doc) {
+          if (doc.ok) {
+            doc.ok = outgoing(doc.ok);
+          }
+        });
+      } else {
+        res = outgoing(res);
+      }
       origCallback(null, res);
     };
     origGet.apply(db, [id, opts, callback]);
@@ -110,30 +131,6 @@ exports.filter = function (config) {
     origAllDocs.apply(db, [opts, callback]);
   });
 
-  //
-  // query
-  //
-  var origQuery = db.query;
-  db.query = utils.toPromise(function (fun, opts, origCallback) {
-    if (typeof opts === 'function') {
-      origCallback = opts;
-      opts = {};
-    }
-
-    var callback = function (err, res) {
-      /* istanbul ignore next */
-      if (err) {
-        return origCallback(err);
-      }
-      res.rows.forEach(function (row) {
-        if (row.doc) {
-          row.doc = outgoing(row.doc);
-        }
-      });
-      origCallback(null, res);
-    };
-    origQuery.apply(db, [fun, opts, callback]);
-  });
 };
 
 /* istanbul ignore next */
