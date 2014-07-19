@@ -84,6 +84,66 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('skips local docs', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: '_local/foo'}).then(function () {
+        return db.get('_local/foo');
+      }).then(function (doc) {
+        doc._id.should.equal('_local/foo');
+        should.not.exist(doc.foo);
+      });
+    });
+
+    it('skips local docs, incoming', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.put({_id: '_local/foo'}).then(function () {
+        return db.get('_local/foo');
+      }).then(function (doc) {
+        doc._id.should.equal('_local/foo');
+        should.not.exist(doc.foo);
+      });
+    });
+
+    it('skips local docs, post', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.post({_id: '_local/foo'}).then(function () {
+        return db.get('_local/foo');
+      }).then(function (doc) {
+        doc._id.should.equal('_local/foo');
+        should.not.exist(doc.foo);
+      });
+    });
+
+    it('skips local docs, bulkDocs', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      return db.bulkDocs([{_id: '_local/foo'}]).then(function () {
+        return db.get('_local/foo');
+      }).then(function (doc) {
+        doc._id.should.equal('_local/foo');
+        should.not.exist(doc.foo);
+      });
+    });
+
     it('filters on GET with options', function () {
       db.filter({
         outgoing: function (doc) {

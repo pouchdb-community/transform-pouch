@@ -85,3 +85,7 @@ exports.extend = require('pouchdb-extend');
 exports.clone = function (obj) {
   return exports.extend(true, {}, obj);
 };
+
+exports.isLocalId = function (id) {
+  return (/^_local/).test(id);
+};

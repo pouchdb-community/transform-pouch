@@ -6,12 +6,18 @@ exports.filter = function (config) {
   var db = this;
 
   var incoming = function (doc) {
+    if (typeof doc._id === 'string' && utils.isLocalId(doc._id)) {
+      return doc;
+    }
     if (config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
+    if (typeof doc._id === 'string' && utils.isLocalId(doc._id)) {
+      return doc;
+    }
     if (config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
