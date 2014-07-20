@@ -137,6 +137,62 @@ exports.filter = function (config) {
     origAllDocs.apply(db, [opts, callback]);
   });
 
+  //
+  // changes
+  //
+  var origChanges = db.changes;
+  db.changes = function (opts, callback) {
+
+    function modifyChange(change) {
+      if (change.doc) {
+        change.doc = outgoing(change.doc);
+      }
+      return change;
+    }
+
+    function modifyChanges(res) {
+      if (res.results) {
+        res.results = res.results.map(modifyChange);
+      }
+      return res;
+    }
+
+    if (opts.complete) {
+      var origComplete = opts.complete;
+      opts.complete = function (err, res) {
+        if (err) {
+          return origComplete(err);
+        }
+        origComplete(null, modifyChanges(res));
+      };
+    }
+
+    var changes = origChanges.apply(db, [opts, callback]);
+
+    // override some events
+    var origOn = changes.on;
+    changes.on = function (event, listener) {
+      if (event === 'change') {
+        return origOn.apply(changes, [event, function (change) {
+          listener(modifyChange(change));
+        }]);
+      } else if (event === 'complete') {
+        return origOn.apply(changes, [event, function (res) {
+          listener(modifyChanges(res));
+        }]);
+      }
+      return origOn.apply(changes, [event, listener]);
+    };
+
+    var origThen = changes.then;
+    changes.then = function (resolve, reject) {
+      return origThen.apply(changes, [function (res) {
+        resolve(modifyChanges(res));
+      }, reject]);
+    };
+
+    return changes;
+  };
 };
 
 /* istanbul ignore next */
