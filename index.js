@@ -190,9 +190,9 @@ exports.filter = function (config) {
       self.emit('create', res);
     });
   }
-  /*db.changes = function (opts, callback) {
+  db.changes = function (opts, callback) {
     return new Changes(opts, callback);
-  };*/
+  };
 };
 
 /* istanbul ignore next */
