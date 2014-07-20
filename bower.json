@@ -1,0 +1,28 @@
+{
+  "name": "filter-pouch",
+  "main": "dist/pouchdb.filter-pouch.js",
+  "version": "0.1.0",
+  "homepage": "https://github.com/nolanlawson/filter-pouch",
+  "authors": [
+    "Nolan Lawson <nolan.lawson@gmail.com>"
+  ],
+  "description": "Filter Pouch - a PouchDB plugin for filtering documents",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "pouchdb",
+    "couchdb",
+    "filter",
+    "plugin"
+  ],
+  "license": "Apache 2",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "vendor"
+  ]
+}
