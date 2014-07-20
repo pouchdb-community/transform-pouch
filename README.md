@@ -1,8 +1,6 @@
 Filter Pouch
 =====
 
-**WORK IN PROGRESS**
-
 [![Build Status](https://travis-ci.org/nolanlawson/filter-pouch.svg)](https://travis-ci.org/nolanlawson/filter-pouch)
 
 Apply a *filter function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
@@ -16,7 +14,7 @@ There are a few different use cases for this:
 Usage
 ----------
 
-To use this plugin, include the `pouchdb.filter-pouch.js` file (available in `dist/`) after `pouchdb.js` in your HTML page:
+To use this plugin, include the `dist/pouchdb.filter-pouch.js` file after `pouchdb.js` in your HTML page:
 
 ```html
 <script src="pouchdb.js"></script>
