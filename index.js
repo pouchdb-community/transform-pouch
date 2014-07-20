@@ -151,15 +151,14 @@ exports.filter = function (config) {
     }
 
     function modifyChanges(res) {
-      if (res.results) {
-        res.results = res.results.map(modifyChange);
-      }
+      res.results = res.results.map(modifyChange);
       return res;
     }
 
     if (opts.complete) {
       var origComplete = opts.complete;
       opts.complete = function (err, res) {
+        /* istanbul ignore next */
         if (err) {
           return origComplete(err);
         }
