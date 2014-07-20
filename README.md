@@ -9,14 +9,14 @@ Apply a *filter function* to documents before and after they are stored in the d
 
 There are a few different use cases for this:
 
-* Encrypt and decript sensitive document fields
-* Compress and uncompress large content before storing
+* Encrypt and decrypt sensitive document fields
+* Compress and uncompress large content to avoid hitting storage limits
 * Remove fields, add fields, or massage user-provided fields
 
 Usage
 ----------
 
-To use this plugin, include it after `pouchdb.js` in your HTML page:
+To use this plugin, include the `pouchdb.filter-pouch.js` file (available in `dist/`) after `pouchdb.js` in your HTML page:
 
 ```html
 <script src="pouchdb.js"></script>
@@ -45,7 +45,7 @@ PouchDB.plugin(require('filter-pouch'));
 API
 --------
 
-When you instantiate a new DB, initiate the filtering like so:
+When you create a new PouchDB, you need to configure the filter functions:
 
 ```js
 var pouch = new PouchDB('mydb');
@@ -67,6 +67,7 @@ Notes:
 * Your filter function **must** return the document itself, or a new document.
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
 * `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, and outgoing replications.
+* The `filter()` method is synchronous - no need for callbacks or promises.
 
 Example: Encryption
 ----------
