@@ -5,13 +5,13 @@ Filter Pouch
 
 [![Build Status](https://travis-ci.org/nolanlawson/filter-pouch.svg)](https://travis-ci.org/nolanlawson/filter-pouch)
 
-Apply a *filter function* to documents before and after they are stored in the database. These functions apply invisibly to `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, and also to documents added via replication.
+Apply a *filter function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
 
-There are a few different uses for this:
+There are a few different use cases for this:
 
 * Encrypt and decript sensitive document fields
 * Compress and uncompress large content before storing
-* Remove fields, add fields, or modify user-provided fields
+* Remove fields, add fields, or massage user-provided fields
 
 Usage
 ----------
@@ -21,6 +21,12 @@ To use this plugin, include it after `pouchdb.js` in your HTML page:
 ```html
 <script src="pouchdb.js"></script>
 <script src="pouchdb.filter-pouch.js"></script>
+```
+
+It's also available in Bower:
+
+```
+bower install filter-pouch
 ```
 
 Or to use it in Node.js, just npm install it:
@@ -55,9 +61,12 @@ pouch.filter({
 });
 ```
 
-You can provide an `incoming` function, an `outgoing` function, or both.
+Notes:
 
-Your filter functions **must** return the document itself or a new document.
+* You can provide an `incoming` function, an `outgoing` function, or both.
+* Your filter function **must** return the document itself, or a new document.
+* `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
+* `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, and outgoing replications.
 
 Example: Encryption
 ----------
@@ -124,6 +133,8 @@ whereas privileged users will see:
   _rev: '1-bfc37cd00225f68671fe3187c054f9e3'
 }
 ```
+
+This works for remote CouchDB databases as well.  In fact, only the encrypted data is sent over the wire, so it's ideal for protecting sensitive information.
 
 Building
 ----
