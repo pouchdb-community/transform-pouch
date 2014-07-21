@@ -3,11 +3,16 @@
 
 var utils = require('./pouch-utils');
 
+function isUnfilterable(doc) {
+  var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
+  return isLocal || doc._deleted;
+}
+
 exports.filter = function (config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (typeof doc._id === 'string' && utils.isLocalId(doc._id)) {
+    if (isUnfilterable(doc)) {
       return doc;
     }
     if (config.incoming) {
@@ -16,7 +21,7 @@ exports.filter = function (config) {
     return doc;
   };
   var outgoing = function (doc) {
-    if (typeof doc._id === 'string' && utils.isLocalId(doc._id)) {
+    if (isUnfilterable(doc)) {
       return doc;
     }
     if (config.outgoing) {
