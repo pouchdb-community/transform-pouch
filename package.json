@@ -1,6 +1,6 @@
 {
   "name": "filter-pouch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Filter Pouch - a PouchDB plugin for filtering documents",
   "main": "index.js",
   "repository": {

@@ -1,7 +1,7 @@
 {
   "name": "filter-pouch",
   "main": "dist/pouchdb.filter-pouch.js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://github.com/nolanlawson/filter-pouch",
   "authors": [
     "Nolan Lawson <nolan.lawson@gmail.com>"
