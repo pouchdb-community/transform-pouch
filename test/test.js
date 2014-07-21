@@ -144,6 +144,39 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('skips deleted docs', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo.baz = 'baz';
+          return doc;
+        }
+      });
+      var doc = {_id: 'foo', foo: {}};
+      return db.put(doc).then(function (res) {
+        doc._rev = res.rev;
+        return db.get('foo');
+      }).then(function (doc) {
+        doc.foo.baz.should.equal('baz');
+        return db.remove(doc);
+      });
+    });
+
+    // TODO: convert sync errors in user code into async errors
+    it.skip('handles sync errors', function () {
+      db.filter({
+        incoming: function (doc) {
+          doc.foo.baz = 'baz';
+          return doc;
+        }
+      });
+      var doc = {_id: 'foo'};
+      return db.put(doc).then(function (res) {
+        should.not.exist(res);
+      }).catch(function (err) {
+        should.exist(err);
+      });
+    });
+
     it('filters on GET with options', function () {
       db.filter({
         outgoing: function (doc) {
@@ -171,6 +204,26 @@ function tests(dbName, dbType) {
       }).then(function (docs) {
         docs.should.have.length(1);
         docs[0].missing.should.equal('1-DNE');
+      });
+    });
+
+    it('filters on GET with missing and non-missing open_revs', function () {
+      db.filter({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+      var rev;
+      return db.put({_id: 'foo'}).then(function (res) {
+        rev = res.rev;
+        return db.get('foo', {revs: true, open_revs: ['1-DNE', rev]});
+      }).then(function (docs) {
+        docs.should.have.length(2);
+        var okRes = docs[0].ok ? docs[0] : docs[1];
+        var missingRes = docs[0].ok ? docs[1] : docs[0];
+        missingRes.missing.should.equal('1-DNE');
+        okRes.ok._rev.should.equal(rev);
       });
     });
 
@@ -527,6 +580,25 @@ function tests(dbName, dbType) {
       }).then(function (res) {
         res.results.should.have.length(1);
         res.results[0].doc.secret.should.equal(encrypt('my super secret text!'));
+      });
+    });
+
+    it('test encryption/decryption with bulkdocs/changes complete, no docs', function () {
+      filter(db);
+
+      function changesCompletePromise(db, opts) {
+        return db.changes(opts);
+      }
+
+      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
+        return changesCompletePromise(db, {});
+      }).then(function (res) {
+        res.results.should.have.length(1);
+        should.not.exist(res.results[0].doc);
+        return changesCompletePromise(new Pouch(dbName), {});
+      }).then(function (res) {
+        res.results.should.have.length(1);
+        should.not.exist(res.results[0].doc);
       });
     });
 
