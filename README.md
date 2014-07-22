@@ -64,7 +64,7 @@ Notes:
 * You can provide an `incoming` function, an `outgoing` function, or both.
 * Your filter function **must** return the document itself, or a new document.
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
-* `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, and outgoing replications.
+* `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, `query()`, and outgoing replications.
 * The `filter()` method is synchronous - no need for callbacks or promises.
 
 Example: Encryption
@@ -134,6 +134,13 @@ whereas privileged users will see:
 ```
 
 This works for remote CouchDB databases as well.  In fact, only the encrypted data is sent over the wire, so it's ideal for protecting sensitive information.
+
+Note on query()
+---------
+
+Since the remote CouchDB doesn't have accesss to the unfiltered document, map/reduce functions in CouchDB will apply to the unfiltered version. PouchDB doesn't have this limitation because it's all local.
+
+So e.g. if you try to `emit()` an encrypted field, it will be encrypted in CouchDB but decrypted in PouchDB.
 
 Building
 ----

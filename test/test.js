@@ -621,14 +621,37 @@ function tests(dbName, dbType) {
       return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
         return changesCompletePromise(db, {include_docs: true});
       }).then(function (res) {
-          res.results.should.have.length(1);
-          res.results[0].doc.secret.should.equal('my super secret text!');
-          return changesCompletePromise(new Pouch(dbName), {include_docs: true});
-        }).then(function (res) {
-          res.results.should.have.length(1);
-          res.results[0].doc.secret.should.equal(encrypt('my super secret text!'));
-        });
+        res.results.should.have.length(1);
+        res.results[0].doc.secret.should.equal('my super secret text!');
+        return changesCompletePromise(new Pouch(dbName), {include_docs: true});
+      }).then(function (res) {
+        res.results.should.have.length(1);
+        res.results[0].doc.secret.should.equal(encrypt('my super secret text!'));
+      });
     });
+
+    // only works locally, since the remote Couch can't see the
+    // unencrypted field
+    if (dbType === 'local') {
+      it('test encryption/decryption with map/reduce', function () {
+        filter(db);
+        var mapFun = {
+          map: function (doc) {
+            emit(doc.secret);
+          }
+        };
+        return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
+          return db.query(mapFun);
+        }).then(function (res) {
+          res.rows.should.have.length(1);
+          res.rows[0].key.should.equal('my super secret text!');
+          return new Pouch(dbName).query(mapFun);
+        }).then(function (res) {
+          res.rows.should.have.length(1);
+          res.rows[0].key.should.equal(encrypt('my super secret text!'));
+        });
+      });
+    }
   });
 
   describe(dbType + ': replication tests', function () {
