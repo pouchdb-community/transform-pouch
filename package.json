@@ -1,6 +1,6 @@
 {
   "name": "filter-pouch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Filter Pouch - a PouchDB plugin for filtering documents",
   "main": "index.js",
   "repository": {
@@ -54,9 +54,6 @@
     "uglify-js": "^2.4.13",
     "watchify": "~0.4.1",
     "wd": "^0.2.21"
-  },
-  "peerDependencies": {
-    "pouchdb": ">= 2.2.0"
   },
   "browser": {
     "crypto": false
