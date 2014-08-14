@@ -2,6 +2,9 @@ language: node_js
 
 services:
   - couchdb
+  
+git:
+  depth: 1
 
 node_js:
   - "0.10"
