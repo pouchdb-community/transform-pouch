@@ -1,6 +1,7 @@
 'use strict';
 
 var utils = require('./pouch-utils');
+var wrappers = require('pouchdb-wrappers');
 
 function isUnfilterable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
@@ -11,78 +12,40 @@ exports.filter = function (config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (isUnfilterable(doc)) {
-      return doc;
-    }
-    if (config.incoming) {
+    if (!isUnfilterable(doc) && config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
-    if (isUnfilterable(doc)) {
-      return doc;
-    }
-    if (config.outgoing) {
+    if (!isUnfilterable(doc) && config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
     return doc;
   };
 
+  var handlers = {};
+
   if (db.type() === 'http') {
-    //
-    // put
-    //
-    var origPut = db.put;
-    db.put = utils.getArguments(function (args) {
-      var doc = args[0];
-
-      doc = incoming(doc);
-
-      args[0] = doc;
-      return origPut.apply(db, args);
-    });
-    //
-    // query
-    //
-    var origQuery = db.query;
-    db.query = utils.toPromise(function (fun, opts, origCallback) {
-      if (typeof opts === 'function') {
-        origCallback = opts;
-        opts = {};
-      }
-
-      var callback = function (err, res) {
-        /* istanbul ignore next */
-        if (err) {
-          return origCallback(err);
-        }
+    handlers.put = function (orig, args) {
+      args.doc = incoming(args.doc);
+      return orig();
+    };
+    handlers.query = function (orig) {
+      return orig().then(function (res) {
         res.rows.forEach(function (row) {
           if (row.doc) {
             row.doc = outgoing(row.doc);
           }
         });
-        origCallback(null, res);
-      };
-      origQuery.apply(db, [fun, opts, callback]);
-    });
+
+        return res;
+      });
+    };
   }
 
-  //
-  // get
-  //
-  var origGet = db.get;
-  db.get = utils.toPromise(function (id, opts, origCallback) {
-    if (typeof opts === 'function') {
-      origCallback = opts;
-      opts = {};
-    }
-
-    var callback = function (err, res) {
-      if (err) {
-        return origCallback(err);
-      }
-
+  handlers.get = function (orig) {
+    return orig().then(function (res) {
       if (Array.isArray(res)) {
         // open_revs style, it's a list of docs
         res.forEach(function (doc) {
@@ -93,61 +56,29 @@ exports.filter = function (config) {
       } else {
         res = outgoing(res);
       }
-      origCallback(null, res);
-    };
-    origGet.apply(db, [id, opts, callback]);
-  });
+      return res;
+    });
+  };
 
-
-  //
-  // bulkDocs
-  //
-  var origBulkDocs = db.bulkDocs;
-  db.bulkDocs = utils.getArguments(function (args) {
-    var docsObj = args[0];
-
-    docsObj = Array.isArray(docsObj) ? docsObj.slice() : utils.clone(docsObj);
-    var docs = Array.isArray(docsObj) ? docsObj : docsObj.docs;
-
-    for (var i = 0; i < docs.length; i++) {
-      docs[i] = incoming(docs[i]);
+  handlers.bulkDocs = function (orig, args) {
+    for (var i = 0; i < args.docs.length; i++) {
+      args.docs[i] = incoming(args.docs[i]);
     }
+    return orig();
+  };
 
-    args[0] = docsObj;
-    return origBulkDocs.apply(db, args);
-  });
-
-  //
-  // allDocs
-  //
-  var origAllDocs = db.allDocs;
-  db.allDocs = utils.toPromise(function (opts, origCallback) {
-    if (typeof opts === 'function') {
-      origCallback = opts;
-      opts = {};
-    }
-
-    var callback = function (err, res) {
-      /* istanbul ignore next */
-      if (err) {
-        return origCallback(err);
-      }
+  handlers.allDocs = function (orig) {
+    return orig().then(function (res) {
       res.rows.forEach(function (row) {
         if (row.doc) {
           row.doc = outgoing(row.doc);
         }
       });
-      origCallback(null, res);
-    };
-    origAllDocs.apply(db, [opts, callback]);
-  });
+      return res;
+    });
+  };
 
-  //
-  // changes
-  //
-  var origChanges = db.changes;
-  db.changes = function (opts, callback) {
-
+  handlers.changes = function (orig, args) {
     function modifyChange(change) {
       if (change.doc) {
         change.doc = outgoing(change.doc);
@@ -160,9 +91,9 @@ exports.filter = function (config) {
       return res;
     }
 
-    if (opts.complete) {
-      var origComplete = opts.complete;
-      opts.complete = function (err, res) {
+    if (args.options.complete) {
+      var origComplete = args.options.complete;
+      args.options.complete = function (err, res) {
         /* istanbul ignore next */
         if (err) {
           return origComplete(err);
@@ -171,8 +102,7 @@ exports.filter = function (config) {
       };
     }
 
-    var changes = origChanges.apply(db, [opts, callback]);
-
+    var changes = orig();
     // override some events
     var origOn = changes.on;
     changes.on = function (event, listener) {
@@ -194,9 +124,9 @@ exports.filter = function (config) {
         resolve(modifyChanges(res));
       }, reject]);
     };
-
     return changes;
   };
+  wrappers.installWrapperMethods(db, handlers);
 };
 
 /* istanbul ignore next */
