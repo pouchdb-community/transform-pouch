@@ -70,7 +70,7 @@ Notes:
 Example: Encryption
 ----------
 
-Using the Node.js crypto library (you would need something different in a browser), let's first set up our encrypt/decrypt functions:
+Using the Node.js crypto library (in a browser, you would need something like [Stanford Crypto](https://bitwiseshiftleft.github.io/sjcl/) or [WebCrypto](http://caniuse.com/#feat=cryptography)), let's first set up our encrypt/decrypt functions:
 
 ```js
 var crypto = require('crypto');
@@ -112,6 +112,8 @@ pouch.filter({
   }
 });
 ```
+
+(`filter-pouch` will automatically ignore deleted documents, so you don't need to handle that case.)
 
 Now, the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `filters`.  You'll see documents like:
 
