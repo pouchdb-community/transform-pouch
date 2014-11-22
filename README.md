@@ -5,11 +5,11 @@ Filter Pouch
 
 Apply a *filter function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
 
-There are a few different use cases for this:
+This allows you to:
 
 * Encrypt and decrypt sensitive document fields
 * Compress and uncompress large content to avoid hitting storage limits
-* Remove fields, add fields, or massage user-provided fields
+* Remove or modify documents before storage, to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits).
 
 Usage
 ----------
