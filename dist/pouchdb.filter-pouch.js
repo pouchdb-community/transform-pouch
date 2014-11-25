@@ -2,6 +2,7 @@
 'use strict';
 
 var utils = require('./pouch-utils');
+var wrappers = require('pouchdb-wrappers');
 
 function isUnfilterable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
@@ -12,78 +13,40 @@ exports.filter = function (config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (isUnfilterable(doc)) {
-      return doc;
-    }
-    if (config.incoming) {
+    if (!isUnfilterable(doc) && config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
-    if (isUnfilterable(doc)) {
-      return doc;
-    }
-    if (config.outgoing) {
+    if (!isUnfilterable(doc) && config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
     return doc;
   };
 
+  var handlers = {};
+
   if (db.type() === 'http') {
-    //
-    // put
-    //
-    var origPut = db.put;
-    db.put = utils.getArguments(function (args) {
-      var doc = args[0];
-
-      doc = incoming(doc);
-
-      args[0] = doc;
-      return origPut.apply(db, args);
-    });
-    //
-    // query
-    //
-    var origQuery = db.query;
-    db.query = utils.toPromise(function (fun, opts, origCallback) {
-      if (typeof opts === 'function') {
-        origCallback = opts;
-        opts = {};
-      }
-
-      var callback = function (err, res) {
-        /* istanbul ignore next */
-        if (err) {
-          return origCallback(err);
-        }
+    handlers.put = function (orig, args) {
+      args.doc = incoming(args.doc);
+      return orig();
+    };
+    handlers.query = function (orig) {
+      return orig().then(function (res) {
         res.rows.forEach(function (row) {
           if (row.doc) {
             row.doc = outgoing(row.doc);
           }
         });
-        origCallback(null, res);
-      };
-      origQuery.apply(db, [fun, opts, callback]);
-    });
+
+        return res;
+      });
+    };
   }
 
-  //
-  // get
-  //
-  var origGet = db.get;
-  db.get = utils.toPromise(function (id, opts, origCallback) {
-    if (typeof opts === 'function') {
-      origCallback = opts;
-      opts = {};
-    }
-
-    var callback = function (err, res) {
-      if (err) {
-        return origCallback(err);
-      }
-
+  handlers.get = function (orig) {
+    return orig().then(function (res) {
       if (Array.isArray(res)) {
         // open_revs style, it's a list of docs
         res.forEach(function (doc) {
@@ -94,61 +57,29 @@ exports.filter = function (config) {
       } else {
         res = outgoing(res);
       }
-      origCallback(null, res);
-    };
-    origGet.apply(db, [id, opts, callback]);
-  });
+      return res;
+    });
+  };
 
-
-  //
-  // bulkDocs
-  //
-  var origBulkDocs = db.bulkDocs;
-  db.bulkDocs = utils.getArguments(function (args) {
-    var docsObj = args[0];
-
-    docsObj = Array.isArray(docsObj) ? docsObj.slice() : utils.clone(docsObj);
-    var docs = Array.isArray(docsObj) ? docsObj : docsObj.docs;
-
-    for (var i = 0; i < docs.length; i++) {
-      docs[i] = incoming(docs[i]);
+  handlers.bulkDocs = function (orig, args) {
+    for (var i = 0; i < args.docs.length; i++) {
+      args.docs[i] = incoming(args.docs[i]);
     }
+    return orig();
+  };
 
-    args[0] = docsObj;
-    return origBulkDocs.apply(db, args);
-  });
-
-  //
-  // allDocs
-  //
-  var origAllDocs = db.allDocs;
-  db.allDocs = utils.toPromise(function (opts, origCallback) {
-    if (typeof opts === 'function') {
-      origCallback = opts;
-      opts = {};
-    }
-
-    var callback = function (err, res) {
-      /* istanbul ignore next */
-      if (err) {
-        return origCallback(err);
-      }
+  handlers.allDocs = function (orig) {
+    return orig().then(function (res) {
       res.rows.forEach(function (row) {
         if (row.doc) {
           row.doc = outgoing(row.doc);
         }
       });
-      origCallback(null, res);
-    };
-    origAllDocs.apply(db, [opts, callback]);
-  });
+      return res;
+    });
+  };
 
-  //
-  // changes
-  //
-  var origChanges = db.changes;
-  db.changes = function (opts, callback) {
-
+  handlers.changes = function (orig, args) {
     function modifyChange(change) {
       if (change.doc) {
         change.doc = outgoing(change.doc);
@@ -161,9 +92,9 @@ exports.filter = function (config) {
       return res;
     }
 
-    if (opts.complete) {
-      var origComplete = opts.complete;
-      opts.complete = function (err, res) {
+    if (args.options.complete) {
+      var origComplete = args.options.complete;
+      args.options.complete = function (err, res) {
         /* istanbul ignore next */
         if (err) {
           return origComplete(err);
@@ -172,8 +103,7 @@ exports.filter = function (config) {
       };
     }
 
-    var changes = origChanges.apply(db, [opts, callback]);
-
+    var changes = orig();
     // override some events
     var origOn = changes.on;
     changes.on = function (event, listener) {
@@ -195,9 +125,9 @@ exports.filter = function (config) {
         resolve(modifyChanges(res));
       }, reject]);
     };
-
     return changes;
   };
+  wrappers.installWrapperMethods(db, handlers);
 };
 
 /* istanbul ignore next */
@@ -205,7 +135,7 @@ if (typeof window !== 'undefined' && window.PouchDB) {
   window.PouchDB.plugin(exports);
 }
 
-},{"./pouch-utils":23}],2:[function(require,module,exports){
+},{"./pouch-utils":26,"pouchdb-wrappers":24}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
 // shim for using process in browser
@@ -300,10 +230,10 @@ var reject = require('./reject');
 var resolve = require('./resolve');
 var INTERNAL = require('./INTERNAL');
 var handlers = require('./handlers');
-var noArray = reject(new TypeError('must be an array'));
-module.exports = function all(iterable) {
+module.exports = all;
+function all(iterable) {
   if (Object.prototype.toString.call(iterable) !== '[object Array]') {
-    return noArray;
+    return reject(new TypeError('must be an array'));
   }
 
   var len = iterable.length;
@@ -336,8 +266,8 @@ module.exports = function all(iterable) {
       }
     }
   }
-};
-},{"./INTERNAL":5,"./handlers":7,"./promise":9,"./reject":11,"./resolve":12}],7:[function(require,module,exports){
+}
+},{"./INTERNAL":5,"./handlers":7,"./promise":9,"./reject":12,"./resolve":13}],7:[function(require,module,exports){
 'use strict';
 var tryCatch = require('./tryCatch');
 var resolveThenable = require('./resolveThenable');
@@ -383,13 +313,14 @@ function getThen(obj) {
     };
   }
 }
-},{"./resolveThenable":13,"./states":14,"./tryCatch":15}],8:[function(require,module,exports){
+},{"./resolveThenable":14,"./states":15,"./tryCatch":16}],8:[function(require,module,exports){
 module.exports = exports = require('./promise');
 
 exports.resolve = require('./resolve');
 exports.reject = require('./reject');
 exports.all = require('./all');
-},{"./all":6,"./promise":9,"./reject":11,"./resolve":12}],9:[function(require,module,exports){
+exports.race = require('./race');
+},{"./all":6,"./promise":9,"./race":11,"./reject":12,"./resolve":13}],9:[function(require,module,exports){
 'use strict';
 
 var unwrap = require('./unwrap');
@@ -435,7 +366,7 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
   return promise;
 };
 
-},{"./INTERNAL":5,"./queueItem":10,"./resolveThenable":13,"./states":14,"./unwrap":16}],10:[function(require,module,exports){
+},{"./INTERNAL":5,"./queueItem":10,"./resolveThenable":14,"./states":15,"./unwrap":17}],10:[function(require,module,exports){
 'use strict';
 var handlers = require('./handlers');
 var unwrap = require('./unwrap');
@@ -464,7 +395,48 @@ QueueItem.prototype.callRejected = function (value) {
 QueueItem.prototype.otherCallRejected = function (value) {
   unwrap(this.promise, this.onRejected, value);
 };
-},{"./handlers":7,"./unwrap":16}],11:[function(require,module,exports){
+},{"./handlers":7,"./unwrap":17}],11:[function(require,module,exports){
+'use strict';
+var Promise = require('./promise');
+var reject = require('./reject');
+var resolve = require('./resolve');
+var INTERNAL = require('./INTERNAL');
+var handlers = require('./handlers');
+module.exports = race;
+function race(iterable) {
+  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
+    return reject(new TypeError('must be an array'));
+  }
+
+  var len = iterable.length;
+  var called = false;
+  if (!len) {
+    return resolve([]);
+  }
+
+  var resolved = 0;
+  var i = -1;
+  var promise = new Promise(INTERNAL);
+  
+  while (++i < len) {
+    resolver(iterable[i]);
+  }
+  return promise;
+  function resolver(value) {
+    resolve(value).then(function (response) {
+      if (!called) {
+        called = true;
+        handlers.resolve(promise, response);
+      }
+    }, function (error) {
+      if (!called) {
+        called = true;
+        handlers.reject(promise, error);
+      }
+    });
+  }
+}
+},{"./INTERNAL":5,"./handlers":7,"./promise":9,"./reject":12,"./resolve":13}],12:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./promise');
@@ -476,7 +448,7 @@ function reject(reason) {
 	var promise = new Promise(INTERNAL);
 	return handlers.reject(promise, reason);
 }
-},{"./INTERNAL":5,"./handlers":7,"./promise":9}],12:[function(require,module,exports){
+},{"./INTERNAL":5,"./handlers":7,"./promise":9}],13:[function(require,module,exports){
 'use strict';
 
 var Promise = require('./promise');
@@ -511,7 +483,7 @@ function resolve(value) {
       return EMPTYSTRING;
   }
 }
-},{"./INTERNAL":5,"./handlers":7,"./promise":9}],13:[function(require,module,exports){
+},{"./INTERNAL":5,"./handlers":7,"./promise":9}],14:[function(require,module,exports){
 'use strict';
 var handlers = require('./handlers');
 var tryCatch = require('./tryCatch');
@@ -544,13 +516,13 @@ function safelyResolveThenable(self, thenable) {
   }
 }
 exports.safely = safelyResolveThenable;
-},{"./handlers":7,"./tryCatch":15}],14:[function(require,module,exports){
+},{"./handlers":7,"./tryCatch":16}],15:[function(require,module,exports){
 // Lazy man's symbols for states
 
 exports.REJECTED = ['REJECTED'];
 exports.FULFILLED = ['FULFILLED'];
 exports.PENDING = ['PENDING'];
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 module.exports = tryCatch;
@@ -566,7 +538,7 @@ function tryCatch(func, value) {
   }
   return out;
 }
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 'use strict';
 
 var immediate = require('immediate');
@@ -588,7 +560,7 @@ function unwrap(promise, func, value) {
     }
   });
 }
-},{"./handlers":7,"immediate":17}],17:[function(require,module,exports){
+},{"./handlers":7,"immediate":18}],18:[function(require,module,exports){
 'use strict';
 var types = [
   require('./nextTick'),
@@ -599,7 +571,8 @@ var types = [
 ];
 var draining;
 var queue = [];
-function drainQueue() {
+//named nextTick for less confusing stack traces
+function nextTick() {
   draining = true;
   var i, oldQueue;
   var len = queue.length;
@@ -619,7 +592,7 @@ var i = -1;
 var len = types.length;
 while (++ i < len) {
   if (types[i] && types[i].test && types[i].test()) {
-    scheduleDrain = types[i].install(drainQueue);
+    scheduleDrain = types[i].install(nextTick);
     break;
   }
 }
@@ -629,7 +602,7 @@ function immediate(task) {
     scheduleDrain();
   }
 }
-},{"./messageChannel":18,"./mutation.js":19,"./nextTick":2,"./stateChange":20,"./timeout":21}],18:[function(require,module,exports){
+},{"./messageChannel":19,"./mutation.js":20,"./nextTick":2,"./stateChange":21,"./timeout":22}],19:[function(require,module,exports){
 var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};'use strict';
 
 exports.test = function () {
@@ -648,7 +621,7 @@ exports.install = function (func) {
     channel.port2.postMessage(0);
   };
 };
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};'use strict';
 //based off rsvp https://github.com/tildeio/rsvp.js
 //license https://github.com/tildeio/rsvp.js/blob/master/LICENSE
@@ -671,7 +644,7 @@ exports.install = function (handle) {
     element.data = (called = ++called % 2);
   };
 };
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};'use strict';
 
 exports.test = function () {
@@ -696,7 +669,7 @@ exports.install = function (handle) {
     return handle;
   };
 };
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 'use strict';
 exports.test = function () {
   return true;
@@ -707,7 +680,7 @@ exports.install = function (t) {
     setTimeout(t, 0);
   };
 };
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 
 // Extends method
@@ -779,16 +752,38 @@ var isArray = Array.isArray || function (obj) {
 };
 
 function extend() {
+  // originally extend() was recursive, but this ended up giving us
+  // "call stack exceeded", so it's been unrolled to use a literal stack
+  // (see https://github.com/pouchdb/pouchdb/issues/2543)
+  var stack = [];
+  var i = -1;
+  var len = arguments.length;
+  var args = new Array(len);
+  while (++i < len) {
+    args[i] = arguments[i];
+  }
+  var container = {};
+  stack.push({args: args, result: {container: container, key: 'key'}});
+  var next;
+  while ((next = stack.pop())) {
+    extendInner(stack, next.args, next.result);
+  }
+  return container.key;
+}
+
+function extendInner(stack, args, result) {
   var options, name, src, copy, copyIsArray, clone,
-    target = arguments[0] || {},
+    target = args[0] || {},
     i = 1,
-    length = arguments.length,
-    deep = false;
+    length = args.length,
+    deep = false,
+    numericStringRegex = /\d+/,
+    optionsIsArray;
 
   // Handle a deep copy situation
   if (typeof target === "boolean") {
     deep = target;
-    target = arguments[1] || {};
+    target = args[1] || {};
     // skip the boolean and the target
     i = 2;
   }
@@ -807,11 +802,15 @@ function extend() {
 
   for (; i < length; i++) {
     // Only deal with non-null/undefined values
-    if ((options = arguments[i]) != null) {
+    if ((options = args[i]) != null) {
+      optionsIsArray = isArray(options);
       // Extend the base object
       for (name in options) {
         //if (options.hasOwnProperty(name)) {
         if (!(name in Object.prototype)) {
+          if (optionsIsArray && !numericStringRegex.test(name)) {
+            continue;
+          }
 
           src = target[name];
           copy = options[name];
@@ -833,7 +832,13 @@ function extend() {
             }
 
             // Never move original objects, clone them
-            target[name] = extend(deep, clone, copy);
+            stack.push({
+              args: [deep, clone, copy],
+              result: {
+                container: target,
+                key: name
+              }
+            });
 
           // Don't bring in undefined values
           } else if (copy !== undefined) {
@@ -846,8 +851,9 @@ function extend() {
     }
   }
 
-  // Return the modified object
-  return target;
+  // "Return" the modified object by setting the key
+  // on the given container
+  result.container[result.key] = target;
 }
 
 
@@ -855,7 +861,521 @@ module.exports = extend;
 
 
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
+/*
+    Copyright 2014, Marten de Vries
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
+
+"use strict";
+
+var nodify = require("promise-nodify");
+
+exports.installStaticWrapperMethods = function (PouchDB, handlers) {
+  //set an 'alternative constructor' so the constructor can be easily
+  //wrapped, since wrapping 'real' constructors is hard.
+  PouchDB["new"] = PouchDB["new"] || function (name, options, callback) {
+    return new PouchDB(name, options, callback);
+  };
+
+  installWrappers(PouchDB, handlers, exports.createStaticWrapperMethod);
+};
+
+exports.installWrapperMethods = function (db, handlers) {
+  installWrappers(db, handlers, exports.createWrapperMethod);
+};
+
+function installWrappers(base, handlers, createWrapperMethod) {
+  for (var name in handlers) {
+    if (!handlers.hasOwnProperty(name)) {
+      continue;
+    }
+    var info = getBaseAndName(base, name);
+    var original = info.base[info.name];
+    if (!original) {
+      //no method to wrap
+      continue;
+    }
+    if (original.hasOwnProperty("_handlers")) {
+      if (original._handlers.indexOf(handlers[name]) !== -1) {
+        throw new Error("Wrapper method for '" + name + "' already installed: " + handlers[name]);
+      }
+      original._handlers.push(handlers[name]);
+    } else {
+      info.base[info.name] = createWrapperMethod(name, original, handlers[name], base);
+    }
+  }
+}
+
+function getBaseAndName(base, name) {
+  name = name.split(".");
+  while (name.length > 1) {
+    base = base[name.shift(0)];
+  }
+  return {
+    base: base,
+    name: name[0]
+  };
+}
+
+exports.createStaticWrapperMethod = function (name, original, handler, PouchDB) {
+  //PouchDB is optional
+  return createWrapper(name, original, handler, staticWrapperBuilders, PouchDB);
+};
+
+exports.createWrapperMethod = function (name, original, handler, db) {
+  //db is optional
+  return createWrapper(name, original, handler, wrapperBuilders, db);
+};
+
+function createWrapper(name, original, handler, theWrapperBuilders, thisVal) {
+  //thisVal is optional
+  var buildWrapper = theWrapperBuilders[name];
+  if (typeof createWrapper === "undefined") {
+    throw new Error("No known wrapper for method name: " + name); //coverage: ignore
+  }
+  var handlers = [handler];
+  var wrapper = buildWrapper(thisVal, original, handlers);
+  wrapper._original = original;
+  wrapper._handlers = handlers;
+  return wrapper;
+}
+
+var wrapperBuilders = {};
+
+wrapperBuilders.destroy = function (db, destroy, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCall(destroy));
+  };
+};
+
+wrapperBuilders.put = function (db, put, handlers) {
+  return function (doc, docId, docRev, options, callback) {
+    var args = {};
+    args.base = db || this;
+    args.db = db || this; //backwards compatibility
+    var argsList = Array.prototype.slice.call(arguments);
+    //parsing code borrowed from PouchDB (adapted).
+    args.doc = argsList.shift();
+    var id = '_id' in args.doc;
+    while (true) {
+      var temp = argsList.shift();
+      var temptype = typeof temp;
+      if (temptype === "string" && !id) {
+        args.doc._id = temp;
+        id = true;
+      } else if (temptype === "string" && id && !('_rev' in args.doc)) {
+        args.doc._rev = temp;
+      } else if (temptype === "object") {
+        args.options = temp;
+      } else if (temptype === "function") {
+        args.callback = temp;
+      }
+      if (!argsList.length) {
+        break;
+      }
+    }
+    args.options = args.options || {};
+    return callHandlers(handlers, args, function () {
+      return put.call(this, args.doc, args.options);
+    });
+  };
+};
+
+wrapperBuilders.post = function (db, post, handlers) {
+  return function (doc, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.doc = doc;
+    return callHandlers(handlers, args, function () {
+      return post.call(this, args.doc, args.options);
+    });
+  };
+};
+
+wrapperBuilders.get = function (db, get, handlers) {
+  return function(docId, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.docId = docId;
+    return callHandlers(handlers, args, function () {
+      return get.call(this, args.docId, args.options);
+    });
+  };
+};
+
+wrapperBuilders.remove = function (db, remove, handlers) {
+  return function (docOrId, optsOrRev, opts, callback) {
+    var args;
+
+    //originally borrowed from PouchDB
+    if (typeof optsOrRev === 'string') {
+      // id, rev, opts, callback style
+      args = parseBaseArgs(db, this, opts, callback);
+      args.doc = {
+        _id: docOrId,
+        _rev: optsOrRev
+      };
+    } else {
+      // doc, opts, callback style
+      args = parseBaseArgs(db, this, optsOrRev, opts);
+      args.doc = docOrId;
+    }
+
+    return callHandlers(handlers, args, function () {
+      return remove.call(this, args.doc, args.options);
+    });
+  };
+};
+
+wrapperBuilders.bulkDocs = function (db, bulkDocs, handlers) {
+  return function (docs, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    //support the deprecated signature.
+    args.docs = docs.docs || docs;
+    return callHandlers(handlers, args, function () {
+      return bulkDocs.call(this, args.docs, args.options);
+    });
+  };
+};
+
+wrapperBuilders.allDocs = function (db, allDocs, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCallWithOptions(allDocs, args));
+  };
+};
+
+wrapperBuilders.changes = function (db, changes, handlers) {
+  return function (options, callback) {
+    //the callback argument is no longer documented. (And deprecated?)
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCallWithOptions(changes, args));
+  };
+};
+
+wrapperBuilders.sync = function (db, replicate, handlers) {
+  return function (url, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.url = url;
+    return callHandlers(handlers, args, function () {
+      return replicate.call(this, args.url, args.options);
+    });
+  };
+};
+
+wrapperBuilders["replicate.from"] = wrapperBuilders.sync;
+wrapperBuilders["replicate.to"] = wrapperBuilders.sync;
+
+wrapperBuilders.putAttachment = function (db, putAttachment, handlers) {
+  return function (docId, attachmentId, rev, doc, type, options, callback) {
+    //options is not an 'official' argument. But some plug-ins need it
+    //and maybe (?) also the http adapter.
+
+    //valid calls:
+    //- "id", "aid", "rev", new Blob(), "text/plain", {}, function () {}
+    //- "id", "aid", new Blob(), "text/plain", {}, function () {}
+    //- "id", "aid", new Blob(), "text/plain"
+    var args;
+    if (typeof type === "string") {
+      //rev is specified
+      args = parseBaseArgs(db, this, options, callback);
+      args.rev = rev;
+      args.doc = doc;
+      args.type = type;
+    } else {
+      //rev is unspecified
+      args = parseBaseArgs(db, this, type, options);
+      args.rev = null;
+      args.doc = rev;
+      args.type = doc;
+    }
+    //fixed arguments
+    args.docId = docId;
+    args.attachmentId = attachmentId;
+
+    return callHandlers(handlers, args, function () {
+      return putAttachment.call(this, args.docId, args.attachmentId, args.rev, args.doc, args.type);
+    });
+  };
+};
+
+wrapperBuilders.getAttachment = function (db, getAttachment, handlers) {
+  return function (docId, attachmentId, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.docId = docId;
+    args.attachmentId = attachmentId;
+    return callHandlers(handlers, args, function () {
+      return getAttachment.call(this, args.docId, args.attachmentId, args.options);
+    });
+  };
+};
+
+wrapperBuilders.removeAttachment = function (db, removeAttachment, handlers) {
+  return function (docId, attachmentId, rev, options, callback) {
+    //see note on the options argument at putAttachment.
+    var args = parseBaseArgs(db, this, options, callback);
+    args.docId = docId;
+    args.attachmentId = attachmentId;
+    args.rev = rev;
+    return callHandlers(handlers, args, function () {
+      return removeAttachment.call(this, args.docId, args.attachmentId, args.rev);
+    });
+  };
+};
+
+wrapperBuilders.query = function (db, query, handlers) {
+  return function (fun, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.fun = fun;
+    return callHandlers(handlers, args, function () {
+      return query.call(this, args.fun, args.options);
+    });
+  };
+};
+
+wrapperBuilders.viewCleanup = function (db, viewCleanup, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCallWithOptions(viewCleanup, args));
+  };
+};
+
+wrapperBuilders.info = function (db, info, handlers) {
+  return function (options, callback) {
+    //see note on the options argument at putAttachment.
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCall(info));
+  };
+};
+
+wrapperBuilders.compact = function (db, compact, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCallWithOptions(compact, args));
+  };
+};
+
+wrapperBuilders.revsDiff = function (db, revsDiff, handlers) {
+  return function (diff, options, callback) {
+    //see note on the options argument at putAttachment.
+    var args = parseBaseArgs(db, this, options, callback);
+    args.diff = diff;
+    return callHandlers(handlers, args, function () {
+      return revsDiff.call(this, args.diff);
+    });
+  };
+};
+
+//Plug-in wrapperBuilders; only of the plug-ins for which a wrapper
+//has been necessary.
+
+wrapperBuilders.list = function (db, orig, handlers) {
+  return function (path, options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    args.path = path;
+
+    return callHandlers(handlers, args, function () {
+      return orig.call(this, args.path, args.options);
+    });
+  };
+};
+
+wrapperBuilders.rewriteResultRequestObject = wrapperBuilders.list;
+wrapperBuilders.show = wrapperBuilders.list;
+wrapperBuilders.update = wrapperBuilders.list;
+
+wrapperBuilders.getSecurity = function (db, getSecurity, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(db, this, options, callback);
+    return callHandlers(handlers, args, makeCallWithOptions(getSecurity, args));
+  };
+};
+
+wrapperBuilders.putSecurity = function (db, putSecurity, handlers) {
+  return function (secObj, options, callback) {
+    //see note on the options argument at putAttachment.
+    var args = parseBaseArgs(db, this, options, callback);
+    args.secObj = secObj;
+    return callHandlers(handlers, args, function () {
+      return putSecurity.call(this, args.secObj);
+    });
+  };
+};
+
+//static
+var staticWrapperBuilders = {};
+
+staticWrapperBuilders["new"] = function (PouchDB, construct, handlers) {
+  return function (name, options, callback) {
+    var args;
+    if (typeof name === "object") {
+      args = parseBaseArgs(PouchDB, this, name, options);
+    } else {
+      args = parseBaseArgs(PouchDB, this, options, callback);
+      args.options.name = name;
+    }
+    return callHandlers(handlers, args, function () {
+      return construct.call(this, args.options);
+    });
+  };
+};
+
+staticWrapperBuilders.destroy = function (PouchDB, destroy, handlers) {
+  return function (name, options, callback) {
+    var args;
+    if (typeof name === "object") {
+      args = parseBaseArgs(PouchDB, this, name, options);
+    } else {
+      args = parseBaseArgs(PouchDB, this, options, callback);
+      args.options.name = name;
+    }
+    return callHandlers(handlers, args, function () {
+      var name = args.options.name;
+      delete args.options.name;
+      return destroy.call(this, name, args.options);
+    });
+  };
+};
+
+staticWrapperBuilders.replicate = function (PouchDB, replicate, handlers) {
+  return function (source, target, options) {
+    //no callback
+    var args = parseBaseArgs(PouchDB, this, options);
+    args.source = source;
+    args.target = target;
+    return callHandlers(handlers, args, function () {
+      return replicate.call(this, args.source, args.target, args.options);
+    });
+  };
+};
+
+//Wrap .plugin()? .on()? .defaults()? No use case yet, but it's
+//possible...
+
+function parseBaseArgs(thisVal1, thisVal2, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = {};
+  }
+  return {
+    base: thisVal1 || thisVal2,
+    db: thisVal1 || thisVal2, //backwards compatibility
+    options: options || {},
+    callback: callback
+  };
+}
+
+function callHandlers(handlers, args, method) {
+  var callback = args.callback;
+  delete args.callback;
+
+  //build a chain of handlers: the bottom handler calls the 'real'
+  //method, the other handlers call other handlers.
+  method = method.bind(args.base);
+  for (var i = handlers.length - 1; i >= 0; i -= 1) {
+    method = handlers[i].bind(null, method, args);
+  }
+  //start running the chain.
+  var promise = method();
+  nodify(promise, callback);
+  return promise;
+}
+
+function makeCall(func) {
+  return function () {
+    return func.call(this);
+  };
+}
+
+function makeCallWithOptions(func, args) {
+  return function () {
+    return func.call(this, args.options);
+  };
+}
+
+exports.uninstallWrapperMethods = function (db, handlers) {
+  uninstallWrappers(db, handlers);
+};
+
+exports.uninstallStaticWrapperMethods = function (PouchDB, handlers) {
+  uninstallWrappers(PouchDB, handlers);
+};
+
+function uninstallWrappers(base, handlers) {
+  for (var name in handlers) {
+    if (!handlers.hasOwnProperty(name)) {
+      continue;
+    }
+    var info = getBaseAndName(base, name);
+    var wrapper = info.base[info.name];
+    if (typeof wrapper === "undefined") {
+      //method doesn't exist, so was never wrapped in the first place.
+      continue;
+    }
+
+    var idx;
+    try {
+      idx = wrapper._handlers.indexOf(handlers[name]);
+    } catch (err) {
+      idx = -1;
+    }
+    if (idx === -1) {
+      throw new Error("Wrapper method for '" + name + "' not installed: " + handlers[name]);
+    }
+    wrapper._handlers.splice(idx, 1);
+    if (!wrapper._handlers.length) {
+      //fall back to the original on the prototype.
+      delete info.base[info.name];
+      if (info.base[info.name] !== wrapper._original) {
+        //nothing or something unexpected was on the prototype. (E.g.
+        //replicate.to). Reset the original manually.
+        info.base[info.name] = wrapper._original;
+      }
+    }
+  }
+}
+
+},{"promise-nodify":25}],25:[function(require,module,exports){
+/*
+  Copyright 2013-2014, Marten de Vries
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
+
+"use strict";
+
+module.exports = function nodify(promise, callback) {
+  if (typeof callback === "function") {
+    promise.then(function (resp) {
+      callback(null, resp);
+    }, function (err) {
+      callback(err, null);
+    });
+  }
+};
+
+},{}],26:[function(require,module,exports){
 var process=require("__browserify_process"),global=typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {};'use strict';
 
 var Promise;
@@ -947,5 +1467,5 @@ exports.clone = function (obj) {
 exports.isLocalId = function (id) {
   return (/^_local/).test(id);
 };
-},{"__browserify_process":3,"inherits":4,"lie":8,"pouchdb-extend":22}]},{},[1])
+},{"__browserify_process":3,"inherits":4,"lie":8,"pouchdb-extend":23}]},{},[1])
 ;
