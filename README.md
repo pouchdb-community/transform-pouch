@@ -70,7 +70,9 @@ Notes:
 Example: Encryption
 ----------
 
-Using the Node.js crypto library (in a browser, you would need something like [Stanford Crypto](https://bitwiseshiftleft.github.io/sjcl/) or [WebCrypto](http://caniuse.com/#feat=cryptography)), let's first set up our encrypt/decrypt functions:
+**Update!** Check out [crypto-pouch](https://github.com/calvinmetcalf/crypto-pouch), which is based on this plugin, and runs in both the browser and Node. The instructions below will only work in Node.
+
+Using the Node.js crypto library, let's first set up our encrypt/decrypt functions:
 
 ```js
 var crypto = require('crypto');
