@@ -9,7 +9,7 @@ This allows you to:
 
 * Encrypt and decrypt sensitive document fields
 * Compress and uncompress large content (e.g. to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits))
-* Remove or modify documents before storage (e.g. to massage data from CouchDB).
+* Remove or modify documents before storage (e.g. to massage data from CouchDB)
 
 Usage
 ----------
