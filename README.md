@@ -8,8 +8,8 @@ Apply a *filter function* to documents before and after they are stored in the d
 This allows you to:
 
 * Encrypt and decrypt sensitive document fields
-* Compress and uncompress large content to avoid hitting storage limits
-* Remove or modify documents before storage, to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits).
+* Compress and uncompress large content (e.g. to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits))
+* Remove or modify documents before storage (e.g. to massage data from CouchDB).
 
 Usage
 ----------
