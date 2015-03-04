@@ -142,9 +142,9 @@ This works for remote CouchDB databases as well.  In fact, only the encrypted da
 Note on query()
 ---------
 
-Since the remote CouchDB doesn't have accesss to the unfiltered document, map/reduce functions in CouchDB will be applies to the unfiltered version. PouchDB doesn't have this limitation, because everything is local.
+Since the remote CouchDB doesn't have accesss to the unfiltered document, map/reduce functions that are executed directly against CouchDB will be applied to the unfiltered version. PouchDB doesn't have this limitation, because everything is local.
 
-So for instance, if you try to `emit()` an encrypted field:
+So for instance, if you try to `emit()` an encrypted field in your map function:
 
 ```js
 function (doc) {
@@ -152,7 +152,7 @@ function (doc) {
 }
 ```
 
-... the emitted key will be encrypted when you `query()` a remote database but decrypted when you `query()` a local database. So be aware that the functionality is not exactly the same.
+... the emitted key will be encrypted when you `query()` the remote database, but decrypted when you `query()` a local database. So be aware that the `query()` functionality is not exactly the same.
 
 Building
 ----
