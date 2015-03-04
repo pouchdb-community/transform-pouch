@@ -1,9 +1,9 @@
-Filter Pouch
+Transform Pouch
 =====
 
-[![Build Status](https://travis-ci.org/nolanlawson/filter-pouch.svg)](https://travis-ci.org/nolanlawson/filter-pouch)
+[![Build Status](https://travis-ci.org/nolanlawson/transform-pouch.svg)](https://travis-ci.org/nolanlawson/transform-pouch)
 
-Apply a *filter function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
+Apply a *transform function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
 
 This allows you to:
 
@@ -11,43 +11,45 @@ This allows you to:
 * Compress and uncompress large content (e.g. to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits))
 * Remove or modify documents before storage (e.g. to massage data from CouchDB)
 
+*__Note:__ This plugin was formerly known as `filter-pouch`. The `filter()` API is still supported, but deprecated.*
+
 Usage
 ----------
 
-To use this plugin, include the `dist/pouchdb.filter-pouch.js` file after `pouchdb.js` in your HTML page:
+To use this plugin, include the `dist/pouchdb.transform-pouch.js` file after `pouchdb.js` in your HTML page:
 
 ```html
 <script src="pouchdb.js"></script>
-<script src="pouchdb.filter-pouch.js"></script>
+<script src="pouchdb.transform-pouch.js"></script>
 ```
 
 It's also available in Bower:
 
 ```
-bower install filter-pouch
+bower install transform-pouch
 ```
 
 Or to use it in Node.js, just npm install it:
 
 ```
-npm install filter-pouch
+npm install transform-pouch
 ```
 
 And then attach it to the `PouchDB` object:
 
 ```js
 var PouchDB = require('pouchdb');
-PouchDB.plugin(require('filter-pouch'));
+PouchDB.plugin(require('transform-pouch'));
 ```
 
 API
 --------
 
-When you create a new PouchDB, you need to configure the filter functions:
+When you create a new PouchDB, you need to configure the transform functions:
 
 ```js
 var pouch = new PouchDB('mydb');
-pouch.filter({
+pouch.transform({
   incoming: function (doc) {
     // do something to the document before storage
     return doc;
@@ -62,10 +64,10 @@ pouch.filter({
 Notes:
 
 * You can provide an `incoming` function, an `outgoing` function, or both.
-* Your filter function **must** return the document itself, or a new document.
+* Your transform function **must** return the document itself, or a new document.
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
 * `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, `query()`, and outgoing replications.
-* The `filter()` method is synchronous - no need for callbacks or promises.
+* The `transform()` method is synchronous - no need for callbacks or promises.
 
 Example: Encryption
 ----------
@@ -92,10 +94,10 @@ function decrypt(text) {
 
 Obviously you would want to change the `'password'` to be something only the user knows!
 
-Next, let's set up our filters:
+Next, let's set up our transforms:
 
 ```js
-pouch.filter({
+pouch.transform({
   incoming: function (doc) {
     Object.keys(doc).forEach(function (field) {
       if (field !== '_id' && field !== '_rev') {
@@ -115,9 +117,9 @@ pouch.filter({
 });
 ```
 
-(`filter-pouch` will automatically ignore deleted documents, so you don't need to handle that case.)
+(`transform-pouch` will automatically ignore deleted documents, so you don't need to handle that case.)
 
-Now, the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `filters`.  You'll see documents like:
+Now, the documents are encrypted whenever they're stored in the database. If you want to verify, try opening them with a `Pouch` where you haven't set up any `transforms`.  You'll see documents like:
 
 ```js
 {
@@ -142,7 +144,7 @@ This works for remote CouchDB databases as well.  In fact, only the encrypted da
 Note on query()
 ---------
 
-Since the remote CouchDB doesn't have accesss to the unfiltered document, map/reduce functions that are executed directly against CouchDB will be applied to the unfiltered version. PouchDB doesn't have this limitation, because everything is local.
+Since the remote CouchDB doesn't have accesss to the untransformed document, map/reduce functions that are executed directly against CouchDB will be applied to the untransformed version. PouchDB doesn't have this limitation, because everything is local.
 
 So for instance, if you try to `emit()` an encrypted field in your map function:
 

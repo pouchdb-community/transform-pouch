@@ -38,8 +38,8 @@ function tests(dbName, dbType) {
       return Pouch.destroy(dbName);
     });
 
-    it('filters on PUT', function () {
-      db.filter({
+    it('transforms on PUT', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -53,8 +53,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on POST', function () {
-      db.filter({
+    it('transforms on POST', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -69,8 +69,8 @@ function tests(dbName, dbType) {
     });
 
 
-    it('filters on GET', function () {
-      db.filter({
+    it('transforms on GET', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -85,7 +85,7 @@ function tests(dbName, dbType) {
     });
 
     it('skips local docs', function () {
-      db.filter({
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -100,7 +100,7 @@ function tests(dbName, dbType) {
     });
 
     it('skips local docs, incoming', function () {
-      db.filter({
+      db.transform({
         incoming: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -115,7 +115,7 @@ function tests(dbName, dbType) {
     });
 
     it('skips local docs, post', function () {
-      db.filter({
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -130,7 +130,7 @@ function tests(dbName, dbType) {
     });
 
     it('skips local docs, bulkDocs', function () {
-      db.filter({
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -145,7 +145,7 @@ function tests(dbName, dbType) {
     });
 
     it('skips deleted docs', function () {
-      db.filter({
+      db.transform({
         incoming: function (doc) {
           doc.foo.baz = 'baz';
           return doc;
@@ -163,7 +163,7 @@ function tests(dbName, dbType) {
 
     // TODO: convert sync errors in user code into async errors
     it.skip('handles sync errors', function () {
-      db.filter({
+      db.transform({
         incoming: function (doc) {
           doc.foo.baz = 'baz';
           return doc;
@@ -177,8 +177,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on GET with options', function () {
-      db.filter({
+    it('transforms on GET with options', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -192,8 +192,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on GET with missing open_revs', function () {
-      db.filter({
+    it('transforms on GET with missing open_revs', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -207,8 +207,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on GET with missing and non-missing open_revs', function () {
-      db.filter({
+    it('transforms on GET with missing and non-missing open_revs', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -227,8 +227,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on GET, not found', function () {
-      db.filter({
+    it('transforms on GET, not found', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -243,8 +243,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on bulk_docs', function () {
-      db.filter({
+    it('transforms on bulk_docs', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -261,8 +261,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on bulk_docs, object style', function () {
-      db.filter({
+    it('transforms on bulk_docs, object style', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -279,8 +279,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on all_docs, incoming', function () {
-      db.filter({
+    it('transforms on all_docs, incoming', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -295,8 +295,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on all_docs, outgoing', function () {
-      db.filter({
+    it('transforms on all_docs, outgoing', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -311,8 +311,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on all_docs no opts, outgoing', function () {
-      db.filter({
+    it('transforms on all_docs no opts, outgoing', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -327,8 +327,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on query, incoming', function () {
-      db.filter({
+    it('transforms on query, incoming', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -348,8 +348,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on query, outgoing', function () {
-      db.filter({
+    it('transforms on query, outgoing', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -369,8 +369,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters on query no opts, outgoing', function () {
-      db.filter({
+    it('transforms on query no opts, outgoing', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz';
           return doc;
@@ -390,8 +390,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('filters ingoing and outgoing', function () {
-      db.filter({
+    it('transforms ingoing and outgoing', function () {
+      db.transform({
         ingoing: function (doc) {
           doc.foo = doc.foo.toUpperCase();
           return doc;
@@ -442,8 +442,8 @@ function tests(dbName, dbType) {
       decrypt = atob;
     }
 
-    function filter(db) {
-      db.filter({
+    function transform(db) {
+      db.transform({
         incoming: function (doc) {
           Object.keys(doc).forEach(function (field) {
             if (field !== '_id' && field !== '_rev') {
@@ -464,7 +464,7 @@ function tests(dbName, dbType) {
     }
 
     it('test encryption/decryption', function () {
-      filter(db);
+      transform(db);
       return db.put({_id: 'doc', secret: 'my super secret text!'}).then(function () {
         return db.get('doc');
       }).then(function (doc) {
@@ -476,7 +476,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with posts', function () {
-      filter(db);
+      transform(db);
       var id;
       return db.post({secret: 'my super secret text!'}).then(function (res) {
         id = res.id;
@@ -490,7 +490,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/alldocs', function () {
-      filter(db);
+      transform(db);
       return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
         return db.allDocs({keys: ['doc'], include_docs: true});
       }).then(function (res) {
@@ -504,7 +504,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/query', function () {
-      filter(db);
+      transform(db);
 
       var mapFun = {
         map: function (doc) {
@@ -525,7 +525,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/changes complete', function () {
-      filter(db);
+      transform(db);
 
       function changesCompletePromise(db, opts) {
         return new Promise(function (resolve, reject) {
@@ -546,7 +546,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/changes single change', function () {
-      filter(db);
+      transform(db);
 
       function changesCompletePromise(db, opts) {
         return new Promise(function (resolve, reject) {
@@ -565,7 +565,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/changes complete, promise style', function () {
-      filter(db);
+      transform(db);
 
       function changesCompletePromise(db, opts) {
         return db.changes(opts);
@@ -584,7 +584,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/changes complete, no docs', function () {
-      filter(db);
+      transform(db);
 
       function changesCompletePromise(db, opts) {
         return db.changes(opts);
@@ -603,7 +603,7 @@ function tests(dbName, dbType) {
     });
 
     it('test encryption/decryption with bulkdocs/changes complete, old style', function () {
-      filter(db);
+      transform(db);
 
       function changesCompletePromise(db, opts) {
         return new Promise(function (resolve, reject) {
@@ -634,7 +634,7 @@ function tests(dbName, dbType) {
     // unencrypted field
     if (dbType === 'local') {
       it('test encryption/decryption with map/reduce', function () {
-        filter(db);
+        transform(db);
         var mapFun = {
           map: function (doc) {
             emit(doc.secret);
@@ -671,8 +671,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('test replication filters incoming', function () {
-      db.filter({
+    it('test replication transforms incoming', function () {
+      db.transform({
         incoming: function (doc) {
           doc.foo = 'baz';
           return doc;
@@ -690,8 +690,8 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('test replication filters outgoing', function () {
-      db.filter({
+    it('test replication transforms outgoing', function () {
+      db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;

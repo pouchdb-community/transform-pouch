@@ -1,32 +1,32 @@
 {
-  "name": "filter-pouch",
+  "name": "transform-pouch",
   "version": "1.0.0",
-  "description": "Filter Pouch - a PouchDB plugin for filtering documents",
+  "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/nolanlawson/filter-pouch.git"
+    "url": "git://github.com/nolanlawson/transform-pouch.git"
   },
   "keywords": [
     "pouch",
     "pouchdb",
     "plugin",
-    "filter",
+    "transform",
     "couch",
     "couchdb"
   ],
   "author": "",
   "license": "Apache",
   "bugs": {
-    "url": "https://github.com/nolanlawson/filter-pouch/issues"
+    "url": "https://github.com/nolanlawson/transform-pouch/issues"
   },
   "scripts": {
     "test-node": "TEST_DB=testdb,http://localhost:5984/testdb istanbul test ./node_modules/mocha/bin/_mocha test/test.js",
     "test-browser": "./bin/test-browser.js",
     "jshint": "jshint -c .jshintrc *.js test/test.js",
     "test": "npm run jshint && ./bin/run-test.sh",
-    "build": "mkdir -p dist && browserify index.js -o dist/pouchdb.filter-pouch.js && npm run min",
-    "min": "uglifyjs dist/pouchdb.filter-pouch.js -mc > dist/pouchdb.filter-pouch.min.js",
+    "build": "mkdir -p dist && browserify index.js -o dist/pouchdb.transform-pouch.js && npm run min",
+    "min": "uglifyjs dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
     "dev": "browserify test/test.js > test/test-bundle.js && npm run dev-server",
     "dev-server": "./bin/dev-server.js",
     "coverage": "npm test --coverage && istanbul check-coverage --lines 100 --function 100 --statements 100 --branches 100"

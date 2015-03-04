@@ -1,19 +1,19 @@
 {
-  "name": "filter-pouch",
-  "main": "dist/pouchdb.filter-pouch.js",
+  "name": "transform-pouch",
+  "main": "dist/pouchdb.transform-pouch.js",
   "version": "1.0.0",
-  "homepage": "https://github.com/nolanlawson/filter-pouch",
+  "homepage": "https://github.com/nolanlawson/transform-pouch",
   "authors": [
     "Nolan Lawson <nolan.lawson@gmail.com>"
   ],
-  "description": "Filter Pouch - a PouchDB plugin for filtering documents",
+  "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "moduleType": [
     "node"
   ],
   "keywords": [
     "pouchdb",
     "couchdb",
-    "filter",
+    "transform",
     "plugin"
   ],
   "license": "Apache 2",

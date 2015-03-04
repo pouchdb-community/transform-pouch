@@ -3,22 +3,23 @@
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
 
-function isUnfilterable(doc) {
+function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
   return isLocal || doc._deleted;
 }
 
-exports.filter = function (config) {
+// api.filter provided for backwards compat with the old "filter-pouch"
+exports.transform = exports.filter = function transform(config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (!isUnfilterable(doc) && config.incoming) {
+    if (!isUntransformable(doc) && config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
-    if (!isUnfilterable(doc) && config.outgoing) {
+    if (!isUntransformable(doc) && config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
     return doc;
