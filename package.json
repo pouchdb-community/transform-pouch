@@ -1,7 +1,7 @@
 {
-  "name": "transform-pouch",
+  "name": "filter-pouch",
   "version": "1.0.1",
-  "description": "Transform Pouch - a PouchDB plugin for transforming documents",
+  "description": "Transform Pouch (formerly Filter Pouch)",
   "main": "index.js",
   "repository": {
     "type": "git",
