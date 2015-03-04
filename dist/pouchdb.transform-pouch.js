@@ -4,22 +4,23 @@
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
 
-function isUnfilterable(doc) {
+function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
   return isLocal || doc._deleted;
 }
 
-exports.filter = function (config) {
+// api.filter provided for backwards compat with the old "filter-pouch"
+exports.transform = exports.filter = function transform(config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (!isUnfilterable(doc) && config.incoming) {
+    if (!isUntransformable(doc) && config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
-    if (!isUnfilterable(doc) && config.outgoing) {
+    if (!isUntransformable(doc) && config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
     return doc;
@@ -335,7 +336,7 @@ function Promise(resolver) {
     return new Promise(resolver);
   }
   if (typeof resolver !== 'function') {
-    throw new TypeError('reslover must be a function');
+    throw new TypeError('resolver must be a function');
   }
   this.state = states.PENDING;
   this.queue = [];
@@ -1249,14 +1250,21 @@ staticWrapperBuilders.destroy = function (PouchDB, destroy, handlers) {
 };
 
 staticWrapperBuilders.replicate = function (PouchDB, replicate, handlers) {
-  return function (source, target, options) {
+  return function (source, target, options, callback) {
     //no callback
-    var args = parseBaseArgs(PouchDB, this, options);
+    var args = parseBaseArgs(PouchDB, this, options, callback);
     args.source = source;
     args.target = target;
     return callHandlers(handlers, args, function () {
       return replicate.call(this, args.source, args.target, args.options);
     });
+  };
+};
+
+staticWrapperBuilders.allDbs = function (PouchDB, allDbs, handlers) {
+  return function (options, callback) {
+    var args = parseBaseArgs(PouchDB, this, options, callback);
+    return callHandlers(handlers, args, makeCall(allDbs));
   };
 };
 
