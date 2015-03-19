@@ -709,4 +709,98 @@ function tests(dbName, dbType) {
       });
     });
   });
+
+  describe(dbType + ': live replication tests', function () {
+
+    var db;
+    var remote;
+
+    // Utility function - complex test incoming
+    var defer = function() {
+        var resolve, reject;
+        var promise = new Promise(function() {
+            resolve = arguments[0];
+            reject = arguments[1];
+        });
+        return {
+            resolve: resolve,
+            reject: reject,
+            promise: promise
+        };
+    };
+
+    beforeEach(function () {
+      db = new Pouch(dbName);
+      remote = new Pouch(dbName + '_other');
+    });
+
+    afterEach(function () {
+      return Pouch.destroy(dbName).then(function () {
+        return Pouch.destroy(dbName + '_other');
+      });
+    });
+
+    it('test replication transforms incoming, and subsequent UPDATE works', function () {
+
+      // Ongoing live replication
+      var replicateHandle = Pouch.replicate(remote, db, {
+        live: true
+      });
+
+      // We need to wait until the "incoming" change has happened.
+      // We'll use a re-assignable deferred object so we can wait multiple times
+      var d;
+      // Our transformation function
+      db.transform({
+        incoming: function (doc) {
+          console.log("INCOMING!");
+          doc.foo = 'baz';
+          // Resolve anything that's waiting for the incoming handler to finish
+          setTimeout(function() {
+            d.resolve();
+          }, 100);
+          return doc;
+        }
+      });
+
+      var setupPromise = new Promise(function(resolve, reject) {
+        // Wait for a second to give replication a chance
+        setTimeout(resolve, 500);
+      });
+
+      // The actual test
+      return setupPromise.then(function() {
+        // Reset the incoming listener
+        d = defer();
+        return remote.put({_id: 'doc'})
+      }).then(function() {
+        // Wait for the incoming listener - everything's updated
+        return d.promise;
+      }).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.foo.should.equal('baz');
+        // Get the remote document so we can update it
+        return remote.get('doc');
+      }).then(function(doc) {
+        // Reset the incoming listener
+        d = defer();
+        // Add a new property to the object
+        return remote.put({_id: 'doc', _rev: doc._rev, moo: 'bar' });
+      }).then(function() {
+        // Wait for the incoming listener - everything's updated
+        return d.promise;
+      }).then(function() {
+        return db.get('doc');
+      }).then(function(doc) {
+        // And here - we fail
+        doc.should.have.property('moo');
+        doc.moo.should.equal('bar');
+      });
+
+      replicateHandle.cancel();
+
+    });
+
+  });
 }
