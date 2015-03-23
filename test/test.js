@@ -716,18 +716,18 @@ function tests(dbName, dbType) {
     var remote;
 
     // Utility function - complex test incoming
-    var defer = function() {
+    var defer = function () {
         var resolve, reject;
-        var promise = new Promise(function() {
+        var promise = new Promise(function () {
             resolve = arguments[0];
             reject = arguments[1];
-        });
+          });
         return {
             resolve: resolve,
             reject: reject,
             promise: promise
-        };
-    };
+          };
+      };
 
     beforeEach(function () {
       db = new Pouch(dbName);
@@ -756,24 +756,24 @@ function tests(dbName, dbType) {
           console.log("INCOMING!");
           doc.foo = 'baz';
           // Resolve anything that's waiting for the incoming handler to finish
-          setTimeout(function() {
+          setTimeout(function () {
             d.resolve();
           }, 100);
           return doc;
         }
       });
 
-      var setupPromise = new Promise(function(resolve, reject) {
+      var setupPromise = new Promise(function (resolve) {
         // Wait for a second to give replication a chance
         setTimeout(resolve, 500);
       });
 
       // The actual test
-      return setupPromise.then(function() {
+      var result = setupPromise.then(function () {
         // Reset the incoming listener
         d = defer();
-        return remote.put({_id: 'doc'})
-      }).then(function() {
+        return remote.put({_id: 'doc'});
+      }).then(function () {
         // Wait for the incoming listener - everything's updated
         return d.promise;
       }).then(function () {
@@ -782,23 +782,29 @@ function tests(dbName, dbType) {
         doc.foo.should.equal('baz');
         // Get the remote document so we can update it
         return remote.get('doc');
-      }).then(function(doc) {
+      }).then(function (doc) {
         // Reset the incoming listener
         d = defer();
         // Add a new property to the object
         return remote.put({_id: 'doc', _rev: doc._rev, moo: 'bar' });
-      }).then(function() {
+      }).then(function () {
         // Wait for the incoming listener - everything's updated
         return d.promise;
-      }).then(function() {
+      }).then(function () {
         return db.get('doc');
-      }).then(function(doc) {
+      }).then(function (doc) {
         // And here - we fail
         doc.should.have.property('moo');
         doc.moo.should.equal('bar');
       });
 
-      replicateHandle.cancel();
+
+      result.always(function () {
+          replicateHandle.cancel();
+        });
+
+
+      return result;
 
     });
 
