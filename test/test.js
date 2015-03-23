@@ -799,7 +799,9 @@ function tests(dbName, dbType) {
       });
 
 
-      result.always(function () {
+      result.then(function () {
+          replicateHandle.cancel();
+        }, function () {
           replicateHandle.cancel();
         });
 
