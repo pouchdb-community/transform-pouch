@@ -11,12 +11,14 @@ This allows you to:
 * Compress and uncompress large content (e.g. to avoid hitting [browser storage limits](http://pouchdb.com/faq.html#data_limits))
 * Remove or modify documents before storage (e.g. to massage data from CouchDB)
 
-*__Note:__ This plugin was formerly known as `filter-pouch`. The `filter()` API is still supported, but deprecated.*
+*__Note:__ This plugin was formerly known as `filter-pouch`, but was renamed to be less confusing. The `filter()` API is still supported, but deprecated.*
 
 Usage
 ----------
 
-To use this plugin, include the `dist/pouchdb.transform-pouch.js` file after `pouchdb.js` in your HTML page:
+### In the browser
+
+To use this plugin in the browser, include the `dist/pouchdb.transform-pouch.js` file after `pouchdb.js` in your HTML page:
 
 ```html
 <script src="pouchdb.js"></script>
@@ -28,6 +30,8 @@ It's also available in Bower:
 ```
 bower install transform-pouch
 ```
+
+### In Node.js/Browserify
 
 Or to use it in Node.js, just npm install it:
 
