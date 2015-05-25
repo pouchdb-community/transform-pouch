@@ -35,7 +35,7 @@ function tests(dbName, dbType) {
       return db;
     });
     afterEach(function () {
-      return Pouch.destroy(dbName);
+      return db.destroy();
     });
 
     it('transforms on PUT', function () {
@@ -418,7 +418,7 @@ function tests(dbName, dbType) {
       return db;
     });
     afterEach(function () {
-      return Pouch.destroy(dbName);
+      return db.destroy();
     });
 
     var encrypt;
@@ -666,8 +666,8 @@ function tests(dbName, dbType) {
     });
 
     afterEach(function () {
-      return Pouch.destroy(dbName).then(function () {
-        return Pouch.destroy(dbName + '_other');
+      return db.destroy().then(function () {
+        return remote.destroy();
       });
     });
 
