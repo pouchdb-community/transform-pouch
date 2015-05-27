@@ -1,7 +1,7 @@
 'use strict';
 
 var utils = require('./pouch-utils');
-var wrappers = require('pouchdb-wrappers');
+var wrappers = require('./pouchdb-wrappers-fixed');
 
 function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
