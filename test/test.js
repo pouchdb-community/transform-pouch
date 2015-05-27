@@ -27,6 +27,7 @@ dbs.split(',').forEach(function (db) {
 
 function tests(dbName, dbType) {
   describe(dbType + ': basic tests', function () {
+    this.timeout(30000);
 
     var db;
 
@@ -410,6 +411,7 @@ function tests(dbName, dbType) {
   });
 
   describe(dbType + ': advanced tests', function () {
+    this.timeout(30000);
 
     var db;
 
@@ -655,6 +657,7 @@ function tests(dbName, dbType) {
   });
 
   describe(dbType + ': replication tests', function () {
+    this.timeout(30000);
 
     var db;
     var remote;
