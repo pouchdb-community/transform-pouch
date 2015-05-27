@@ -262,6 +262,194 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('transforms on bulk_docs, new_edits=false 1', function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      var docsA =  [{
+        "_id": "selenium-global",
+        "_rev": "5-3b6e1f9846c7aa2ae80ba871cd8bf084",
+        "_deleted": true,
+        "_revisions": {
+          "start": 5,
+          "ids": [
+            "3b6e1f9846c7aa2ae80ba871cd8bf084",
+            "84870906995eb23f6375900296226df6"
+          ]
+        }
+      }];
+      var docsB = [{
+        "_id": "selenium-global",
+        "_rev": "4-84870906995eb23f6375900296226df6",
+        "_revisions": {
+          "start": 4,
+          "ids": [
+            "84870906995eb23f6375900296226df6",
+            "941073451900f1d92a9a39dde8938339"
+          ]
+        }
+      }];
+      var docsC = [
+        {
+          "_id": "selenium-global",
+          "_rev": "3-8b3a09799ad70999277f0859f0aa1add",
+          "_revisions": {
+            "start": 3,
+            "ids": [
+              "8b3a09799ad70999277f0859f0aa1add",
+              "10ade0f791a6b0dab76dde12d3ffce74"
+            ]
+          }
+        },
+        {
+          "_id": "selenium-global",
+          "_rev": "2-61cb022c4e5f3a702a969e6ac17fea79",
+          "_revisions": {
+            "start": 2,
+            "ids": [
+              "61cb022c4e5f3a702a969e6ac17fea79",
+              "54f0c85a4a6329bd8885470aef5104d7"
+            ]
+          }
+        },
+        {
+          "_id": "selenium-global",
+          "_rev": "12-787d8aa4043f18d8a8747708afcce370",
+          "_revisions": {
+            "start": 12,
+            "ids": [
+              "787d8aa4043f18d8a8747708afcce370",
+              "9d02f7a6634530eafdcc36df0cab54ff",
+              "328c111479b9aae37cb0c6c38545059b",
+              "c9902a757278d99e60dd1571113687c5",
+              "7c8b0e3a8c6191317664ffafe2a6f40a",
+              "e3f4590f30f77ecfafa638235a4d4e24",
+              "80a589649d8c86e7408d1745edac0484",
+              "f7893b80dbeef9566a99c2d879477cf7",
+              "67b0eb503ba35fd34c5acab77cf9552e",
+              "5b6eeae4b4edf20a2e5b87a333cb9c5c",
+              "2913efa5e4a43a53dca80b66bba9b7dc",
+              "1c0833f56ec15a816a8b2901b7a48176"
+            ]
+          }
+        }
+      ];
+      return db.bulkDocs({docs: docsA, new_edits: false}).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      }).then(function () {
+        return db.bulkDocs({docs: docsB, new_edits: false});
+      }).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      }).then(function () {
+        return db.bulkDocs({docs: docsC, new_edits: false});
+      }).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      });
+    });
+
+    it('transforms on bulk_docs, new_edits=false 2', function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = doc._id + '_baz';
+          return doc;
+        }
+      });
+      var docsA =  [{
+        "_id": "selenium-global",
+        "_rev": "5-3b6e1f9846c7aa2ae80ba871cd8bf084",
+        "_deleted": true,
+        "_revisions": {
+          "start": 5,
+          "ids": [
+            "3b6e1f9846c7aa2ae80ba871cd8bf084",
+            "84870906995eb23f6375900296226df6"
+          ]
+        }
+      }];
+      var docsB = [{
+        "_id": "selenium-global",
+        "_rev": "4-84870906995eb23f6375900296226df6",
+        "_revisions": {
+          "start": 4,
+          "ids": [
+            "84870906995eb23f6375900296226df6",
+            "941073451900f1d92a9a39dde8938339"
+          ]
+        }
+      }];
+      var docsC = [
+        {
+          "_id": "selenium-global",
+          "_rev": "3-8b3a09799ad70999277f0859f0aa1add",
+          "_revisions": {
+            "start": 3,
+            "ids": [
+              "8b3a09799ad70999277f0859f0aa1add",
+              "10ade0f791a6b0dab76dde12d3ffce74"
+            ]
+          }
+        },
+        {
+          "_id": "selenium-global",
+          "_rev": "2-61cb022c4e5f3a702a969e6ac17fea79",
+          "_revisions": {
+            "start": 2,
+            "ids": [
+              "61cb022c4e5f3a702a969e6ac17fea79",
+              "54f0c85a4a6329bd8885470aef5104d7"
+            ]
+          }
+        },
+        {
+          "_id": "selenium-global",
+          "_rev": "12-787d8aa4043f18d8a8747708afcce370",
+          "_revisions": {
+            "start": 12,
+            "ids": [
+              "787d8aa4043f18d8a8747708afcce370",
+              "9d02f7a6634530eafdcc36df0cab54ff",
+              "328c111479b9aae37cb0c6c38545059b",
+              "c9902a757278d99e60dd1571113687c5",
+              "7c8b0e3a8c6191317664ffafe2a6f40a",
+              "e3f4590f30f77ecfafa638235a4d4e24",
+              "80a589649d8c86e7408d1745edac0484",
+              "f7893b80dbeef9566a99c2d879477cf7",
+              "67b0eb503ba35fd34c5acab77cf9552e",
+              "5b6eeae4b4edf20a2e5b87a333cb9c5c",
+              "2913efa5e4a43a53dca80b66bba9b7dc",
+              "1c0833f56ec15a816a8b2901b7a48176"
+            ]
+          }
+        }
+      ];
+      return db.bulkDocs(docsA, {new_edits: false}).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      }).then(function () {
+        return db.bulkDocs(docsB, {new_edits: false});
+      }).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      }).then(function () {
+        return db.bulkDocs(docsC, {new_edits: false});
+      }).then(function (results) {
+        results.forEach(function (result) {
+          should.not.exist(result.error, 'no doc update coflict');
+        });
+      });
+    });
+
     it('transforms on bulk_docs, object style', function () {
       db.transform({
         incoming: function (doc) {
