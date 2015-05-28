@@ -1,12 +1,12 @@
 {
   "name": "transform-pouch",
+  "version": "1.0.2",
+  "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "main": "dist/pouchdb.transform-pouch.js",
-  "version": "1.0.1",
   "homepage": "https://github.com/nolanlawson/transform-pouch",
   "authors": [
     "Nolan Lawson <nolan.lawson@gmail.com>"
   ],
-  "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "moduleType": [
     "node"
   ],

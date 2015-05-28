@@ -314,6 +314,7 @@ function getThen(obj) {
     };
   }
 }
+
 },{"./resolveThenable":14,"./states":15,"./tryCatch":16}],8:[function(require,module,exports){
 module.exports = exports = require('./promise');
 
@@ -321,6 +322,7 @@ exports.resolve = require('./resolve');
 exports.reject = require('./reject');
 exports.all = require('./all');
 exports.race = require('./race');
+
 },{"./all":6,"./promise":9,"./race":11,"./reject":12,"./resolve":13}],9:[function(require,module,exports){
 'use strict';
 
@@ -355,10 +357,8 @@ Promise.prototype.then = function (onFulfilled, onRejected) {
     return this;
   }
   var promise = new Promise(INTERNAL);
-
-  
   if (this.state !== states.PENDING) {
-    var resolver = this.state === states.FULFILLED ? onFulfilled: onRejected;
+    var resolver = this.state === states.FULFILLED ? onFulfilled : onRejected;
     unwrap(promise, resolver, this.outcome);
   } else {
     this.queue.push(new QueueItem(promise, onFulfilled, onRejected));
@@ -396,6 +396,7 @@ QueueItem.prototype.callRejected = function (value) {
 QueueItem.prototype.otherCallRejected = function (value) {
   unwrap(this.promise, this.onRejected, value);
 };
+
 },{"./handlers":7,"./unwrap":17}],11:[function(require,module,exports){
 'use strict';
 var Promise = require('./promise');
@@ -415,10 +416,9 @@ function race(iterable) {
     return resolve([]);
   }
 
-  var resolved = 0;
   var i = -1;
   var promise = new Promise(INTERNAL);
-  
+
   while (++i < len) {
     resolver(iterable[i]);
   }
@@ -437,6 +437,7 @@ function race(iterable) {
     });
   }
 }
+
 },{"./INTERNAL":5,"./handlers":7,"./promise":9,"./reject":12,"./resolve":13}],12:[function(require,module,exports){
 'use strict';
 
@@ -523,6 +524,7 @@ exports.safely = safelyResolveThenable;
 exports.REJECTED = ['REJECTED'];
 exports.FULFILLED = ['FULFILLED'];
 exports.PENDING = ['PENDING'];
+
 },{}],16:[function(require,module,exports){
 'use strict';
 
@@ -864,7 +866,7 @@ module.exports = extend;
 
 },{}],24:[function(require,module,exports){
 /*
-    Copyright 2014, Marten de Vries
+    Copyright 2014-2015, Marten de Vries
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -1043,6 +1045,9 @@ wrapperBuilders.bulkDocs = function (db, bulkDocs, handlers) {
   return function (docs, options, callback) {
     var args = parseBaseArgs(db, this, options, callback);
     //support the deprecated signature.
+    if ('new_edits' in docs) {
+      args.options.new_edits = docs.new_edits;
+    }
     args.docs = docs.docs || docs;
     return callHandlers(handlers, args, function () {
       return bulkDocs.call(this, args.docs, args.options);
@@ -1241,9 +1246,13 @@ staticWrapperBuilders.destroy = function (PouchDB, destroy, handlers) {
       args = parseBaseArgs(PouchDB, this, options, callback);
       args.options.name = name;
     }
+    if (args.options.internal) {
+      return destroy.apply(PouchDB, arguments);
+    }
     return callHandlers(handlers, args, function () {
       var name = args.options.name;
       delete args.options.name;
+
       return destroy.call(this, name, args.options);
     });
   };
