@@ -57,7 +57,7 @@ pouch.transform({
   incoming: function (doc) {
     // do something to the document before storage
     return doc;
-  }
+  },
   outgoing: function (doc) {
     // do something to the document after retrieval
     return doc;
