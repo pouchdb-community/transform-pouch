@@ -792,34 +792,6 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('test encryption/decryption with bulkdocs/changes complete, old style', function () {
-      transform(db);
-
-      function changesCompletePromise(db, opts) {
-        return new Promise(function (resolve, reject) {
-          opts.complete = function (err, res) {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(res);
-            }
-          };
-          db.changes(opts);
-        });
-      }
-
-      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
-        return changesCompletePromise(db, {include_docs: true});
-      }).then(function (res) {
-        res.results.should.have.length(1);
-        res.results[0].doc.secret.should.equal('my super secret text!');
-        return changesCompletePromise(new Pouch(dbName), {include_docs: true});
-      }).then(function (res) {
-        res.results.should.have.length(1);
-        res.results[0].doc.secret.should.equal(encrypt('my super secret text!'));
-      });
-    });
-
     // only works locally, since the remote Couch can't see the
     // unencrypted field
     if (dbType === 'local') {
