@@ -79,7 +79,7 @@ exports.transform = exports.filter = function transform(config) {
     });
   };
 
-  handlers.changes = function (orig, args) {
+  handlers.changes = function (orig) {
     function modifyChange(change) {
       if (change.doc) {
         change.doc = outgoing(change.doc);
@@ -90,17 +90,6 @@ exports.transform = exports.filter = function transform(config) {
     function modifyChanges(res) {
       res.results = res.results.map(modifyChange);
       return res;
-    }
-
-    if (args.options.complete) {
-      var origComplete = args.options.complete;
-      args.options.complete = function (err, res) {
-        /* istanbul ignore next */
-        if (err) {
-          return origComplete(err);
-        }
-        origComplete(null, modifyChanges(res));
-      };
     }
 
     var changes = orig();
