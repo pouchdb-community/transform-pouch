@@ -165,6 +165,27 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('transforms deleted docs if `handleDeleted: true` #18', function () {
+      var doc = {_id: 'foo', foo: {}};
+      return db.put(doc).then(function (res) {
+        doc._rev = res.rev;
+        return db.get('foo');
+      }).then(function (doc) {
+        var transformCalledOnDelete = false;
+        db.transform({
+          incoming: function (doc) {
+            transformCalledOnDelete = true;
+            return doc;
+          },
+          handleDeleted: true
+        });
+
+        return db.remove(doc).then(function () {
+          transformCalledOnDelete.should.equal(true);
+        });
+      });
+    });
+
     // TODO: convert sync errors in user code into async errors
     it.skip('handles sync errors', function () {
       db.transform({
