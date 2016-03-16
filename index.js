@@ -3,9 +3,9 @@
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
 
-function isUntransformable(doc) {
+function isUntransformable(doc, config) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
-  return isLocal || doc._deleted;
+  return isLocal || doc._deleted ? !config.handleDeleted : false;
 }
 
 // api.filter provided for backwards compat with the old "filter-pouch"
@@ -13,13 +13,13 @@ exports.transform = exports.filter = function transform(config) {
   var db = this;
 
   var incoming = function (doc) {
-    if (!isUntransformable(doc) && config.incoming) {
+    if (!isUntransformable(doc, config) && config.incoming) {
       return config.incoming(utils.clone(doc));
     }
     return doc;
   };
   var outgoing = function (doc) {
-    if (!isUntransformable(doc) && config.outgoing) {
+    if (!isUntransformable(doc, config) && config.outgoing) {
       return config.outgoing(utils.clone(doc));
     }
     return doc;
