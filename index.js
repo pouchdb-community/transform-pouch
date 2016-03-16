@@ -3,9 +3,22 @@
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
 
+function isntInternalKey(key) {
+  return key[0] !== '_';
+}
+
 function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
-  return isLocal || doc._deleted;
+
+  if (isLocal) {
+    return true;
+  }
+
+  if (doc._deleted) {
+    return Object.keys(doc).filter(isntInternalKey).length === 0;
+  }
+
+  return false;
 }
 
 // api.filter provided for backwards compat with the old "filter-pouch"
