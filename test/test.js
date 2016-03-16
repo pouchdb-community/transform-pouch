@@ -140,19 +140,22 @@ function tests(dbName, dbType) {
     });
 
     it('skips deleted docs', function () {
-      db.transform({
-        incoming: function (doc) {
-          doc.foo.baz = 'baz';
-          return doc;
-        }
-      });
       var doc = {_id: 'foo', foo: {}};
       return db.put(doc).then(function (res) {
         doc._rev = res.rev;
         return db.get('foo');
       }).then(function (doc) {
-        doc.foo.baz.should.equal('baz');
-        return db.remove(doc);
+        var transformCalledOnDelete = false;
+        db.transform({
+          incoming: function (doc) {
+            transformCalledOnDelete = true;
+            return doc;
+          }
+        });
+
+        return db.remove(doc).then(function () {
+          transformCalledOnDelete.should.equal(false);
+        });
       });
     });
 
