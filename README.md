@@ -68,10 +68,10 @@ pouch.transform({
 Notes:
 
 * You can provide an `incoming` function, an `outgoing` function, or both.
-* Your transform function **must** return the document itself, or a new document.
+* Your transform function **must** return the document itself, or a new document (or a promise for such).
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
 * `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, `query()`, and outgoing replications.
-* The `transform()` method is synchronous - no need for callbacks or promises.
+* The `transform()` methods can be async or sync, just return a promise, or don't.
 
 Example: Encryption
 ----------
@@ -174,7 +174,7 @@ Testing
 This will run the tests in Node using LevelDB:
 
     npm test
-    
+
 You can also check for 100% code coverage using:
 
     npm run coverage
