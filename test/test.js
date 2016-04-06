@@ -8,7 +8,8 @@ Pouch.plugin(plugin);
 var chai = require('chai');
 chai.use(require("chai-as-promised"));
 
-var should = chai.should();
+chai.should();
+// var should = chai.should();
 var Promise = require('bluebird');
 
 var dbs;
@@ -25,6 +26,7 @@ dbs.split(',').forEach(function (db) {
 });
 
 function tests(dbName, dbType) {
+  /*
   describe(dbType + ': basic tests', function () {
     this.timeout(30000);
 
@@ -814,7 +816,7 @@ function tests(dbName, dbType) {
       });
     }
   });
-
+  */
   describe(dbType + ': replication tests', function () {
     this.timeout(30000);
 
@@ -822,9 +824,8 @@ function tests(dbName, dbType) {
     var remote;
 
     beforeEach(function () {
-      var random = Math.random().toString(36).substr(2);
-      db = new Pouch(dbName + random);
-      remote = new Pouch(dbName + random + '_other');
+      db = new Pouch(dbName);
+      remote = new Pouch(dbName + '_other');
     });
 
     afterEach(function () {
@@ -833,24 +834,24 @@ function tests(dbName, dbType) {
       });
     });
 
-    it('test replication transforms incoming', function () {
-      db.transform({
-        incoming: function (doc) {
-          doc.foo = 'baz';
-          return doc;
-        }
-      });
-
-      return remote.put({_id: 'doc'}).then(function () {
-        return new Promise(function (resolve, reject) {
-          remote.replicate.to(db).on('complete', resolve).on('error', reject);
-        });
-      }).then(function () {
-        return db.get('doc');
-      }).then(function (doc) {
-        doc.foo.should.equal('baz');
-      });
-    });
+    // it('test replication transforms incoming', function () {
+    //   db.transform({
+    //     incoming: function (doc) {
+    //       doc.foo = 'baz';
+    //       return doc;
+    //     }
+    //   });
+    //
+    //   return remote.put({_id: 'doc'}).then(function () {
+    //     return new Promise(function (resolve, reject) {
+    //       remote.replicate.to(db).on('complete', resolve).on('error', reject);
+    //     });
+    //   }).then(function () {
+    //     return db.get('doc');
+    //   }).then(function (doc) {
+    //     doc.foo.should.equal('baz');
+    //   });
+    // });
 
     it('test replication transforms outgoing', function () {
       db.transform({
@@ -862,11 +863,7 @@ function tests(dbName, dbType) {
 
       return db.put({_id: 'doc'}).then(function () {
         return new Promise(function (resolve, reject) {
-          db.replicate.to(remote).on('complete', function () {
-            setTimeout(function () {
-              resolve();
-            }, 100);
-          }).on('error', reject);
+          db.replicate.to(remote).on('complete', resolve).on('error', reject);
         });
       }).then(function () {
         return remote.get('doc');
