@@ -8,8 +8,7 @@ Pouch.plugin(plugin);
 var chai = require('chai');
 chai.use(require("chai-as-promised"));
 
-// var should = chai.should();
-chai.should();
+var should = chai.should();
 var Promise = require('bluebird');
 
 var dbs;
@@ -26,7 +25,6 @@ dbs.split(',').forEach(function (db) {
 });
 
 function tests(dbName, dbType) {
-  /*
   describe(dbType + ': basic tests', function () {
     this.timeout(30000);
 
@@ -816,7 +814,7 @@ function tests(dbName, dbType) {
       });
     }
   });
-  */
+
   describe(dbType + ': replication tests', function () {
     this.timeout(30000);
 
@@ -829,30 +827,30 @@ function tests(dbName, dbType) {
       remote = new Pouch(dbName + random + '_other');
     });
 
-    // afterEach(function () {
-    //   return db.destroy().then(function () {
-    //     return remote.destroy();
-    //   });
-    // });
+    afterEach(function () {
+      return db.destroy().then(function () {
+        return remote.destroy();
+      });
+    });
 
-    // it('test replication transforms incoming', function () {
-    //   db.transform({
-    //     incoming: function (doc) {
-    //       doc.foo = 'baz';
-    //       return doc;
-    //     }
-    //   });
-    //
-    //   return remote.put({_id: 'doc'}).then(function () {
-    //     return new Promise(function (resolve, reject) {
-    //       remote.replicate.to(db).on('complete', resolve).on('error', reject);
-    //     });
-    //   }).then(function () {
-    //     return db.get('doc');
-    //   }).then(function (doc) {
-    //     doc.foo.should.equal('baz');
-    //   });
-    // });
+    it('test replication transforms incoming', function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return doc;
+        }
+      });
+
+      return remote.put({_id: 'doc'}).then(function () {
+        return new Promise(function (resolve, reject) {
+          remote.replicate.to(db).on('complete', resolve).on('error', reject);
+        });
+      }).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.foo.should.equal('baz');
+      });
+    });
 
     it('test replication transforms outgoing', function () {
       db.transform({
