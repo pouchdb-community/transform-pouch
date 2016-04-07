@@ -28,10 +28,6 @@ exports.transform = exports.filter = function transform(config) {
   var handlers = {};
 
   if (db.type() === 'http') {
-    handlers.put = function (orig, args) {
-      args.doc = incoming(args.doc);
-      return orig();
-    };
     handlers.query = function (orig) {
       return orig().then(function (res) {
         res.rows.forEach(function (row) {

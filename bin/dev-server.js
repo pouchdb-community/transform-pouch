@@ -2,7 +2,6 @@
 
 'use strict';
 
-var PouchDB = require('pouchdb');
 var COUCH_HOST = process.env.COUCH_HOST || 'http://127.0.0.1:5984';
 var HTTP_PORT = 8001;
 
@@ -13,10 +12,15 @@ var fs = require('fs');
 var indexfile = "./test/test.js";
 var dotfile = "./test/.test-bundle.js";
 var outfile = "./test/test-bundle.js";
-var watchify = require("watchify");
-var w = watchify(indexfile);
+var browserify = require('browserify');
+var watchify = require('watchify');
 
-w.on('update', bundle);
+var b = browserify(indexfile, {
+  plugin: [watchify],
+  debug: true
+});
+
+b.on('update', bundle);
 bundle();
 
 var filesWritten = false;
@@ -24,7 +28,7 @@ var serverStarted = false;
 var readyCallback;
 
 function bundle() {
-  var wb = w.bundle();
+  var wb = b.bundle();
   wb.on('error', function (err) {
     console.error(String(err));
   });
