@@ -64,5 +64,6 @@
     "transform": [
       "es3ify"
     ]
-  }
+  },
+  "files": ["dist", "index.js", "pouch-utils.js"]
 }
