@@ -2,7 +2,7 @@
 
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
-
+var immediate = require('immediate');
 function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
   return isLocal || doc._deleted;
@@ -128,7 +128,7 @@ exports.transform = exports.filter = function transform(config) {
       if (event === 'change') {
         return origOn.apply(changes, [event, function (change) {
           modifyChange(change).then(function (resp) {
-            process.nextTick(function () {
+            immediate(function () {
               listener(resp);
             });
           });
