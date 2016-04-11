@@ -48,6 +48,21 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('transforms on PUT, with a promise', function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return Promise.resolve(doc);
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo');
+      }).then(function (doc) {
+        doc._id.should.equal('foo');
+        doc.foo.should.equal('baz');
+      });
+    });
+
     it('transforms on POST', function () {
       db.transform({
         incoming: function (doc) {
@@ -63,12 +78,41 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('transforms on POST, with a promise', function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          return Promise.resolve(doc);
+        }
+      });
+      return db.post({}).then(function (res) {
+        return db.get(res.id);
+      }).then(function (doc) {
+        doc._id.should.be.a('string');
+        doc.foo.should.equal('baz');
+      });
+    });
 
     it('transforms on GET', function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz';
           return doc;
+        }
+      });
+      return db.put({_id: 'foo'}).then(function () {
+        return db.get('foo');
+      }).then(function (doc) {
+        doc._id.should.equal('foo');
+        doc.foo.should.equal('baz');
+      });
+    });
+
+    it('transforms on GET, with a promise', function () {
+      db.transform({
+        outgoing: function (doc) {
+          doc.foo = 'baz';
+          return Promise.resolve(doc);
         }
       });
       return db.put({_id: 'foo'}).then(function () {
@@ -181,12 +225,25 @@ function tests(dbName, dbType) {
       });
     });
 
-    // TODO: convert sync errors in user code into async errors
     it.skip('handles sync errors', function () {
       db.transform({
         incoming: function (doc) {
           doc.foo.baz = 'baz';
           return doc;
+        }
+      });
+      var doc = {_id: 'foo'};
+      return db.put(doc).then(function (res) {
+        should.not.exist(res);
+      }).catch(function (err) {
+        should.exist(err);
+      });
+    });
+
+    it.skip('handles async errors', function () {
+      db.transform({
+        incoming: function () {
+          return Promise.reject(new Error('flunking you'));
         }
       });
       var doc = {_id: 'foo'};
