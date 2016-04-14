@@ -65,13 +65,27 @@ pouch.transform({
 });
 ```
 
+You can also use Promises:
+
+```js
+var pouch = new PouchDB('mydb');
+pouch.transform({
+  incoming: function (doc) {
+    return Promise.resolve(doc);
+  },
+  outgoing: function (doc) {
+    return Promise.resolve(doc);
+  }
+});
+```
+
 Notes:
 
 * You can provide an `incoming` function, an `outgoing` function, or both.
 * Your transform function **must** return the document itself, or a new document (or a promise for such).
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
 * `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, `query()`, and outgoing replications.
-* The `transform()` methods can be async or sync, just return a promise, or don't.
+* The `incoming`/`outgoing` methods can be async or sync &ndash; just return a Promise for a doc, or the doc itself.
 
 Example: Encryption
 ----------
