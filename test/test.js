@@ -225,7 +225,7 @@ function tests(dbName, dbType) {
       });
     });
 
-    it.skip('handles sync errors', function () {
+    it('handles sync errors', function () {
       db.transform({
         incoming: function (doc) {
           doc.foo.baz = 'baz';
@@ -240,7 +240,7 @@ function tests(dbName, dbType) {
       });
     });
 
-    it.skip('handles async errors', function () {
+    it('handles async errors', function () {
       db.transform({
         incoming: function () {
           return Promise.reject(new Error('flunking you'));
