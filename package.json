@@ -15,8 +15,8 @@
     "couch",
     "couchdb"
   ],
-  "author": "",
-  "license": "Apache",
+  "author": "Nolan Lawson <nolan@nolanlawson.com>",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/nolanlawson/transform-pouch/issues"
   },
