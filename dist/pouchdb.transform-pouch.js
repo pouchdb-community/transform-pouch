@@ -1,12 +1,28 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (process){
 'use strict';
 
+var Promise = require('lie');
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
+var immediate = require('immediate');
+
+function isntInternalKey(key) {
+  return key[0] !== '_';
+}
 
 function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
-  return isLocal || doc._deleted;
+
+  if (isLocal) {
+    return true;
+  }
+
+  if (doc._deleted) {
+    return Object.keys(doc).filter(isntInternalKey).length === 0;
+  }
+
+  return false;
 }
 
 // api.filter provided for backwards compat with the old "filter-pouch"
@@ -30,14 +46,22 @@ exports.transform = exports.filter = function transform(config) {
 
   if (db.type() === 'http') {
     handlers.query = function (orig) {
+      var none = {};
       return orig().then(function (res) {
-        res.rows.forEach(function (row) {
+        return utils.Promise.all(res.rows.map(function (row) {
           if (row.doc) {
-            row.doc = outgoing(row.doc);
+            return outgoing(row.doc);
           }
+          return none;
+        })).then(function (resp) {
+          resp.forEach(function (doc, i) {
+            if (doc === none) {
+              return;
+            }
+            res.rows[i].doc = doc;
+          });
+          return res;
         });
-
-        return res;
       });
     };
   }
@@ -45,16 +69,25 @@ exports.transform = exports.filter = function transform(config) {
   handlers.get = function (orig) {
     return orig().then(function (res) {
       if (Array.isArray(res)) {
+        var none = {};
         // open_revs style, it's a list of docs
-        res.forEach(function (doc) {
-          if (doc.ok) {
-            doc.ok = outgoing(doc.ok);
+        return utils.Promise.all(res.map(function (row) {
+          if (row.ok) {
+            return outgoing(row.ok);
           }
+          return none;
+        })).then(function (resp) {
+          resp.forEach(function (doc, i) {
+            if (doc === none) {
+              return;
+            }
+            res[i].ok = doc;
+          });
+          return res;
         });
       } else {
-        res = outgoing(res);
+        return outgoing(res);
       }
-      return res;
     });
   };
 
@@ -62,31 +95,48 @@ exports.transform = exports.filter = function transform(config) {
     for (var i = 0; i < args.docs.length; i++) {
       args.docs[i] = incoming(args.docs[i]);
     }
-    return orig();
+    return Promise.all(args.docs).then(function (docs) {
+      args.docs = docs;
+      return orig();
+    });
   };
 
   handlers.allDocs = function (orig) {
     return orig().then(function (res) {
-      res.rows.forEach(function (row) {
+      var none = {};
+      return utils.Promise.all(res.rows.map(function (row) {
         if (row.doc) {
-          row.doc = outgoing(row.doc);
+          return outgoing(row.doc);
         }
+        return none;
+      })).then(function (resp) {
+        resp.forEach(function (doc, i) {
+          if (doc === none) {
+            return;
+          }
+          res.rows[i].doc = doc;
+        });
+        return res;
       });
-      return res;
     });
   };
 
   handlers.changes = function (orig) {
     function modifyChange(change) {
       if (change.doc) {
-        change.doc = outgoing(change.doc);
+        return utils.Promise.resolve(outgoing(change.doc)).then(function (doc) {
+          change.doc = doc;
+          return change;
+        });
       }
-      return change;
+      return utils.Promise.resolve(change);
     }
 
     function modifyChanges(res) {
-      res.results = res.results.map(modifyChange);
-      return res;
+      return utils.Promise.all(res.results.map(modifyChange)).then(function (results) {
+        res.results = results;
+        return res;
+      });
     }
 
     var changes = orig();
@@ -95,11 +145,19 @@ exports.transform = exports.filter = function transform(config) {
     changes.on = function (event, listener) {
       if (event === 'change') {
         return origOn.apply(changes, [event, function (change) {
-          listener(modifyChange(change));
+          modifyChange(change).then(function (resp) {
+            immediate(function () {
+              listener(resp);
+            });
+          });
         }]);
       } else if (event === 'complete') {
         return origOn.apply(changes, [event, function (res) {
-          listener(modifyChanges(res));
+          modifyChanges(res).then(function (resp) {
+            process.nextTick(function () {
+              listener(resp);
+            });
+          });
         }]);
       }
       return origOn.apply(changes, [event, listener]);
@@ -108,7 +166,7 @@ exports.transform = exports.filter = function transform(config) {
     var origThen = changes.then;
     changes.then = function (resolve, reject) {
       return origThen.apply(changes, [function (res) {
-        resolve(modifyChanges(res));
+        modifyChanges(res).then(resolve, reject);
       }, reject]);
     };
     return changes;
@@ -121,7 +179,8 @@ if (typeof window !== 'undefined' && window.PouchDB) {
   window.PouchDB.plugin(exports);
 }
 
-},{"./pouch-utils":9,"pouchdb-wrappers":6}],2:[function(require,module,exports){
+}).call(this,require('_process'))
+},{"./pouch-utils":9,"_process":7,"immediate":2,"lie":4,"pouchdb-wrappers":6}],2:[function(require,module,exports){
 (function (global){
 'use strict';
 var Mutation = global.MutationObserver || global.WebKitMutationObserver;
