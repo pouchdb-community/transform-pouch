@@ -5,22 +5,23 @@
 var COUCH_HOST = process.env.COUCH_HOST || 'http://127.0.0.1:5984';
 var HTTP_PORT = 8001;
 
-var Promise = require('lie');
+var Promise = require('bluebird');
 var request = require('request');
 var http_server = require("http-server");
 var fs = require('fs');
 var indexfile = "./test/test.js";
 var dotfile = "./test/.test-bundle.js";
 var outfile = "./test/test-bundle.js";
+var watchify = require("watchify");
 var browserify = require('browserify');
-var watchify = require('watchify');
-
-var b = browserify(indexfile, {
-  plugin: [watchify],
+var w = watchify(browserify(indexfile, {
+  cache: {},
+  packageCache: {},
+  fullPaths: true,
   debug: true
-});
+}));
 
-b.on('update', bundle);
+w.on('update', bundle);
 bundle();
 
 var filesWritten = false;
@@ -28,7 +29,7 @@ var serverStarted = false;
 var readyCallback;
 
 function bundle() {
-  var wb = b.bundle();
+  var wb = w.bundle();
   wb.on('error', function (err) {
     console.error(String(err));
   });
