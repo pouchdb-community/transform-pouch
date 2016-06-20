@@ -1,7 +1,11 @@
 /*jshint expr:true */
 'use strict';
 
-var Pouch = require('pouchdb');
+var Pouch = require('pouchdb-core')
+  .plugin(require('pouchdb-mapreduce'))
+  .plugin(require('pouchdb-replication'))
+  .plugin(require('pouchdb-adapter-memory'))
+  .plugin(require('pouchdb-adapter-http'));
 
 var plugin = require('../');
 Pouch.plugin(plugin);
