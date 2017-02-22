@@ -118,7 +118,7 @@ Next, let's set up our transforms:
 pouch.transform({
   incoming: function (doc) {
     Object.keys(doc).forEach(function (field) {
-      if (field !== '_id' && field !== '_rev') {
+      if (field !== '_id' && field !== '_rev' && field !== '_revisions') {
         doc[field] = encrypt(doc[field]);
       }
     });
@@ -126,7 +126,7 @@ pouch.transform({
   },
   outgoing: function (doc) {
     Object.keys(doc).forEach(function (field) {
-      if (field !== '_id' && field !== '_rev') {
+      if (field !== '_id' && field !== '_rev' && field !== '_revisions') {
         doc[field] = decrypt(doc[field]);
       }
     });
