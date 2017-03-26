@@ -9,6 +9,10 @@ function isntInternalKey(key) {
   return key[0] !== '_';
 }
 
+function isntInternalKey(key) {
+  return key[0] !== '_';
+}
+
 function isUntransformable(doc) {
   var isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id);
 
