@@ -872,6 +872,32 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('makes sure that the .changes wrapper returns the value (#43)', function () {
+      db.transform({});
+      var documentId = 'some-id';
+
+      return db.put({
+        _id: '_design/some_view',
+        views: {
+          some_view: {
+            map: function(doc) {
+              emit(doc.id, doc.value);
+            }.toString(),
+            reduce: '_sum'
+          }
+        }
+      })
+        .then(function () {
+          return db.put({_id: documentId, value: 5});
+        })
+        .then(function () {
+          return db.query('some_view');
+        })
+        .then(function(response) {
+          response.rows.should.have.length(1);
+        });
+    });
+
     // only works locally, since the remote Couch can't see the
     // unencrypted field
     if (dbType === 'local') {
