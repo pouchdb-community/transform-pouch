@@ -88,6 +88,26 @@ exports.transform = exports.filter = function transform(config) {
     });
   };
 
+  handlers.put = function (orig, args) {
+    if (args.base._put) {
+      // Not all adapters have a dedicated put implementation.
+      // Some reuse the bulkDocs API for that. Unfortunately not all.
+      // Therefore only adapters with a specific PUT implementation
+      // are overwritten here. Others are already handled through the
+      // bulkDocs overwrite.
+      return utils.Promise.resolve()
+        .then(function() {
+          return incoming(args.doc);
+        })
+        .then(function(transformedDocument) {
+          args.doc = transformedDocument;
+          return orig();
+        });
+    } else {
+      return orig();
+    }
+  };
+
   handlers.bulkDocs = function (orig, args) {
     for (var i = 0; i < args.docs.length; i++) {
       args.docs[i] = incoming(args.docs[i]);
