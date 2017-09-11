@@ -131,10 +131,13 @@ exports.transform = exports.filter = function transform(config) {
     }
 
     function modifyChanges(res) {
-      return utils.Promise.all(res.results.map(modifyChange)).then(function (results) {
-        res.results = results;
-        return res;
-      });
+      if (res.results) {
+        return utils.Promise.all(res.results.map(modifyChange)).then(function (results) {
+          res.results = results;
+          return res;
+        });
+      }
+      return utils.Promise.resolve(res);
     }
 
     var changes = orig();
