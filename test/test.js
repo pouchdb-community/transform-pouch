@@ -258,6 +258,12 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('handles cancel', function () {
+        db.transform();
+        var syncHandler = db.sync('my_gateway', {});
+        return syncHandler.cancel();
+    });
+
     it('transforms on GET with options', function () {
       db.transform({
         outgoing: function (doc) {
