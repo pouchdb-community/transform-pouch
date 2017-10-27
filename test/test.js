@@ -1,6 +1,9 @@
 /*jshint expr:true */
 'use strict';
 
+// PhantomJs does not support native Promises
+require('lie/polyfill');
+
 var Pouch = require('pouchdb-core')
   .plugin(require('pouchdb-mapreduce'))
   .plugin(require('pouchdb-replication'))
