@@ -119,6 +119,30 @@ exports.transform = exports.filter = function transform(config) {
     });
   };
 
+  handlers.bulkGet = function (orig) {
+    return orig().then(function (res) {
+      var none = {};
+      return utils.Promise.all(res.results.map(function (result) {
+        if (result.id && result.docs && Array.isArray(result.docs)) {
+          return {
+            docs: result.docs.map(function(doc) {
+              if (doc.ok) {
+                return {ok: outgoing(doc.ok)};
+              } else {
+                return doc;
+              }
+            }),
+            id: result.id
+          };
+        } else {
+          return none;
+        }
+      })).then(function (results) {
+        return {results: results};
+      });
+    });
+  };
+  
   handlers.changes = function (orig) {
     function modifyChange(change) {
       if (change.doc) {
