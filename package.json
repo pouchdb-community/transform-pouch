@@ -1,6 +1,6 @@
 {
   "name": "transform-pouch",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "main": "index.js",
   "repository": {
