@@ -3,6 +3,7 @@
   "version": "1.1.5",
   "description": "Transform Pouch - a PouchDB plugin for transforming documents",
   "main": "index.js",
+  "typings": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git://github.com/nolanlawson/transform-pouch.git"
@@ -42,6 +43,7 @@
     "immediate": "~3.0.5"
   },
   "devDependencies": {
+    "@types/pouchdb": "^6.4.0",
     "bluebird": "^1.0.7",
     "browserify": "^12.0.2",
     "chai": "^3.5.0",
@@ -62,6 +64,9 @@
     "uglify-js": "^2.4.13",
     "watchify": "^3.1.0",
     "wd": "^0.2.21"
+  },
+  "peerDependencies": {
+    "@types/pouchdb": "^6.4.0"
   },
   "files": [
     "dist",
