@@ -43,6 +43,20 @@ exports.transform = exports.filter = function transform(config) {
   var handlers = {};
 
   if (db.type() === 'http') {
+    // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
+    // which the adapter does.
+    // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
+    handlers.put = function (orig, args) {
+      try {
+        args.doc = incoming(args.doc);
+        return utils.Promise.resolve(args.doc).then(function (doc) {
+          args.doc = doc;
+          return orig();
+        });
+      } catch (error) {
+        return utils.Promise.reject(error);
+      }
+    };
     handlers.query = function (orig) {
       var none = {};
       return orig().then(function (res) {
@@ -142,7 +156,6 @@ exports.transform = exports.filter = function transform(config) {
       });
     });
   };
-  
   handlers.changes = function (orig) {
     function modifyChange(change) {
       if (change.doc) {
