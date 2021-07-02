@@ -16,9 +16,10 @@ chai.use(require("chai-as-promised"));
 var should = chai.should();
 var Promise = require('lie');
 
-var dbs = 'testdb,http://localhost:5984/testdb';
+var COUCH_URL = process.env.COUCH_URL || 'http://localhost:5984';
+var DB_NAME = 'testdb';
 
-dbs.split(',').forEach(function (db) {
+[DB_NAME, COUCH_URL + '/' + DB_NAME].forEach(function (db) {
   var dbType = /^http/.test(db) ? 'http' : 'local';
   tests(db, dbType);
 });
