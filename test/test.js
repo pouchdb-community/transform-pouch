@@ -610,13 +610,20 @@ function tests(dbName, dbType) {
           return doc;
         }
       });
-      var mapFun = {
-        map: function (doc) {
-          emit(doc._id);
+
+      var ddoc = {
+        _id: '_design/index',
+        views: {
+          index: {
+            map: function (doc) {
+              emit(doc._id);
+            }.toString()
+          }
         }
       };
-      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
-        return db.query(mapFun, {include_docs: true}).then(function (res) {
+
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}, ddoc]}).then(function () {
+        return db.query('index', {include_docs: true}).then(function (res) {
           res.rows.should.have.length(2);
           res.rows[0].doc.foo.should.equal('lala_baz');
           res.rows[1].doc.foo.should.equal('toto_baz');
@@ -631,13 +638,18 @@ function tests(dbName, dbType) {
           return doc;
         }
       });
-      var mapFun = {
-        map: function (doc) {
-          emit(doc._id);
+      var ddoc = {
+        _id: '_design/index',
+        views: {
+          index: {
+            map: function (doc) {
+              emit(doc._id);
+            }.toString()
+          }
         }
       };
-      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
-        return db.query(mapFun, {include_docs: true}).then(function (res) {
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}, ddoc]}).then(function () {
+        return db.query('index', {include_docs: true}).then(function (res) {
           res.rows.should.have.length(2);
           res.rows[0].doc.foo.should.equal('lala_baz');
           res.rows[1].doc.foo.should.equal('toto_baz');
@@ -652,13 +664,18 @@ function tests(dbName, dbType) {
           return doc;
         }
       });
-      var mapFun = {
-        map: function (doc) {
-          emit(doc._id);
+      var ddoc = {
+        _id: '_design/index',
+        views: {
+          index: {
+            map: function (doc) {
+              emit(doc._id);
+            }.toString()
+          }
         }
       };
-      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}]}).then(function () {
-        return db.query(mapFun).then(function (res) {
+      return db.bulkDocs({docs: [{_id: 'toto'}, {_id: 'lala'}, ddoc]}).then(function () {
+        return db.query('index').then(function (res) {
           res.rows.should.have.length(2);
           should.not.exist(res.rows[0].doc);
           should.not.exist(res.rows[1].doc);
@@ -722,14 +739,23 @@ function tests(dbName, dbType) {
     function transform(db) {
       db.transform({
         incoming: function (doc) {
-          Object.keys(doc).forEach(function (field) {
-            if (field !== '_id' && field !== '_rev') {
-              doc[field] = encrypt(doc[field]);
-            }
-          });
+          // designDocs should be ignored
+          // the !doc._id check is for a db.post (without an id)
+          if (!doc._id || doc._id && !doc._id.startsWith('_design')) {
+            Object.keys(doc).forEach(function (field) {
+              if (field !== '_id' && field !== '_rev') {
+                doc[field] = encrypt(doc[field]);
+              }
+            });
+          }
           return doc;
         },
         outgoing: function (doc) {
+          // designDocs should be ignored
+          if (doc._id && doc._id.startsWith('_design')) {
+            return doc;
+          }
+
           Object.keys(doc).forEach(function (field) {
             if (field !== '_id' && field !== '_rev') {
               doc[field] = decrypt(doc[field]);
@@ -783,18 +809,23 @@ function tests(dbName, dbType) {
     it('test encryption/decryption with bulkdocs/query', function () {
       transform(db);
 
-      var mapFun = {
-        map: function (doc) {
-          emit(doc._id);
+      var ddoc = {
+        _id: '_design/index',
+        views: {
+          index: {
+            map: function (doc) {
+              emit(doc._id);
+            }.toString()
+          }
         }
       };
 
-      return db.bulkDocs([{_id: 'doc', secret: 'my super secret text!'}]).then(function () {
-        return db.query(mapFun, {keys: ['doc'], include_docs: true});
+      return db.bulkDocs([ {_id: 'doc', secret: 'my super secret text!'}, ddoc]).then(function () {
+        return db.query('index', {keys: ['doc'], include_docs: true});
       }).then(function (res) {
         res.rows.should.have.length(1);
         res.rows[0].doc.secret.should.equal('my super secret text!');
-        return new Pouch(dbName).query(mapFun, {keys: ['doc'], include_docs: true});
+        return new Pouch(dbName).query('index', {keys: ['doc'], include_docs: true});
       }).then(function (res) {
         res.rows.should.have.length(1);
         res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'));
