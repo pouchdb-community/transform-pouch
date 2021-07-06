@@ -966,8 +966,21 @@ function tests(dbName, dbType) {
     var db;
     var remote;
 
-    beforeEach(function () {
+    // Utility function - complex test incoming
+    var defer = function () {
+    var resolve, reject;
+    var promise = new Promise(function () {
+        resolve = arguments[0];
+        reject = arguments[1];
+      });
+    return {
+        resolve: resolve,
+        reject: reject,
+        promise: promise
+      };
+    };
 
+    beforeEach(function () {
       db = new Pouch(dbName);
       remote = new Pouch(dbName + '_other');
     });
@@ -1014,6 +1027,80 @@ function tests(dbName, dbType) {
       }).then(function (doc) {
         doc.foo.should.equal('baz');
       });
+    });
+
+    it('test live replication transforms', function () {
+      // We need to wait until the "incoming" change has happened.
+      // We'll use a re-assignable deferred object so we can wait multiple times
+      var d;
+
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = 'baz';
+          // Resolve anything that's waiting for the incoming handler to finish
+          setTimeout(function () {
+            d.resolve();
+          }, 100);
+          return doc;
+        },
+        outgoing: function (doc) {
+          doc.boo = 'lal';
+          // Resolve anything that's waiting for the outgoing handler to finish
+          setTimeout(function () {
+            d.resolve();
+          }, 100);
+          return doc;
+        }
+      });
+
+      // Ongoing live replication
+      var syncHandler = remote.sync(db,  {
+        live: true
+      });
+
+      var setupPromise = new Promise(function (resolve) {
+        // Wait to give replication a chance
+        setTimeout(resolve, 500);
+      });
+
+
+      // The actual test
+      var result = setupPromise.then(function () {
+        // Reset the incoming listener
+        d = defer();
+        return remote.put({_id: 'doc'});
+      }).then(function () {
+        // Wait for the incoming listener - everything's updated
+        return d.promise;
+      }).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.should.have.property('boo');
+        doc.should.have.property('foo');
+        doc.foo.should.equal('baz');
+        return remote.get('doc');
+      }).then(function (doc) {
+        // Reset the incoming listener
+        d = defer();
+        return remote.put({_id: 'doc', _rev: doc._rev, moo: 'bar' });
+      }).then(function () {
+        // Wait for the incoming listener - everything's updated
+        return d.promise;
+      }).then(function () {
+        return db.get('doc');
+      }).then(function (doc) {
+        doc.should.have.property('moo');
+        doc.should.have.property('foo');
+        doc.should.have.property('boo');
+        doc.foo.should.equal('baz');
+        doc.moo.should.equal('bar');
+        doc.boo.should.equal('lal');
+      });
+
+      result.then(function () {
+        syncHandler.cancel();
+      });
+    return result;
     });
   });
 }
