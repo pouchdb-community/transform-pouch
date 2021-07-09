@@ -7,9 +7,8 @@ function isntInternalKey (key) {
 }
 
 function isUntransformable (doc) {
-  const isLocal = typeof doc._id === 'string' && (/^_local/).test(doc._id)
-
-  if (isLocal) {
+  // is local
+  if (typeof doc._id === 'string' && (/^_local/).test(doc._id)) {
     return true
   }
 
