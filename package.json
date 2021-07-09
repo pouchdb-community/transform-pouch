@@ -23,7 +23,8 @@
   "scripts": {
     "test-node": "TEST_DB=testdb,http://localhost:5984/testdb nyc ./node_modules/mocha/bin/_mocha test/test.js",
     "test-browser": "./bin/test-browser.js",
-    "test": "./bin/run-test.sh",
+    "test": "npm run lint && ./bin/run-test.sh",
+    "lint": "standard --env mocha",
     "build": "mkdir -p dist && browserify index.js -o dist/pouchdb.transform-pouch.js && npm run min",
     "min": "uglifyjs dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
     "dev": "browserify test/test.js > test/test-bundle.js && npm run dev-server",
@@ -62,5 +63,12 @@
     "dist",
     "index.js",
     "pouch-utils.js"
-  ]
+  ],
+  "standard": {
+    "globals": [
+      "emit",
+      "atob",
+      "btoa"
+    ]
+  }
 }

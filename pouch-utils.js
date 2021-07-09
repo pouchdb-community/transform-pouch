@@ -1,85 +1,85 @@
-'use strict';
+'use strict'
 
-var Promise = require('pouchdb-promise');
+const Promise = require('pouchdb-promise')
 /* istanbul ignore next */
 exports.once = function (fun) {
-  var called = false;
+  let called = false
   return exports.getArguments(function (args) {
     if (called) {
-      console.trace();
-      throw new Error('once called  more than once');
+      console.trace()
+      throw new Error('once called  more than once')
     } else {
-      called = true;
-      fun.apply(this, args);
+      called = true
+      fun.apply(this, args)
     }
-  });
-};
+  })
+}
 /* istanbul ignore next */
 exports.getArguments = function (fun) {
   return function () {
-    var len = arguments.length;
-    var args = new Array(len);
-    var i = -1;
+    const len = arguments.length
+    const args = new Array(len)
+    let i = -1
     while (++i < len) {
-      args[i] = arguments[i];
+      args[i] = arguments[i]
     }
-    return fun.call(this, args);
-  };
-};
+    return fun.call(this, args)
+  }
+}
 /* istanbul ignore next */
 exports.toPromise = function (func) {
-  //create the function we will be returning
+  // create the function we will be returning
   return exports.getArguments(function (args) {
-    var self = this;
-    var tempCB = (typeof args[args.length - 1] === 'function') ? args.pop() : false;
+    const self = this
+    const tempCB = (typeof args[args.length - 1] === 'function') ? args.pop() : false
     // if the last argument is a function, assume its a callback
-    var usedCB;
+    let usedCB
     if (tempCB) {
       // if it was a callback, create a new callback which calls it,
       // but do so async so we don't trap any errors
       usedCB = function (err, resp) {
         process.nextTick(function () {
-          tempCB(err, resp);
-        });
-      };
+          tempCB(err, resp)
+        })
+      }
     }
-    var promise = new Promise(function (fulfill, reject) {
+    const promise = new Promise(function (resolve, reject) {
       try {
-        var callback = exports.once(function (err, mesg) {
+        const callback = exports.once(function (err, mesg) {
           if (err) {
-            reject(err);
+            reject(err)
           } else {
-            fulfill(mesg);
+            resolve(mesg)
           }
-        });
+        })
         // create a callback for this invocation
         // apply the function in the orig context
-        args.push(callback);
-        func.apply(self, args);
+        args.push(callback)
+        func.apply(self, args)
       } catch (e) {
-        reject(e);
+        reject(e)
       }
-    });
+    })
     // if there is a callback, call it back
     if (usedCB) {
       promise.then(function (result) {
-        usedCB(null, result);
-      }, usedCB);
+        usedCB(null, result)
+      }, usedCB)
     }
     promise.cancel = function () {
-      return this;
-    };
-    return promise;
-  });
-};
+      return this
+    }
+    return promise
+  })
+}
 
-exports.inherits = require('inherits');
-exports.Promise = Promise;
-exports.extend = require('pouchdb-extend');
+exports.inherits = require('inherits')
+exports.Promise = Promise
+exports.extend = require('pouchdb-extend')
 exports.clone = function (obj) {
-  return exports.extend(true, {}, obj);
-};
+  return exports.extend(true, {}, obj)
+}
 
 exports.isLocalId = function (id) {
-  return (/^_local/).test(id);
-};
+  return (/^_local/).test(id)
+}

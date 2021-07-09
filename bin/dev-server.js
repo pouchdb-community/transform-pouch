@@ -1,55 +1,55 @@
 #!/usr/bin/env node
 
-'use strict';
+'use strict'
 
-var COUCH_HOST = process.env.COUCH_HOST || 'http://127.0.0.1:5984';
-var HTTP_PORT = 8001;
+const COUCH_HOST = process.env.COUCH_HOST || 'http://127.0.0.1:5984'
+const HTTP_PORT = 8001
 
-var request = require('request');
-var http_server = require("http-server");
-var fs = require('fs');
-var indexfile = "./test/test.js";
-var dotfile = "./test/.test-bundle.js";
-var outfile = "./test/test-bundle.js";
-var watchify = require("watchify");
-var browserify = require('browserify');
-var w = watchify(browserify(indexfile, {
+const request = require('request')
+const http_server = require('http-server') // eslint-disable-line
+const fs = require('fs')
+const indexfile = './test/test.js'
+const dotfile = './test/.test-bundle.js'
+const outfile = './test/test-bundle.js'
+const watchify = require('watchify')
+const browserify = require('browserify')
+const w = watchify(browserify(indexfile, {
   cache: {},
   packageCache: {},
   fullPaths: true,
   debug: true
-}));
+}))
 
-w.on('update', bundle);
-bundle();
+w.on('update', bundle)
+bundle()
 
-var filesWritten = false;
-var serverStarted = false;
-var readyCallback;
+let filesWritten = false
+let serverStarted = false
+let readyCallback
 
-function bundle() {
-  var wb = w.bundle();
+function bundle () {
+  const wb = w.bundle()
   wb.on('error', function (err) {
-    console.error(String(err));
-  });
-  wb.on("end", end);
-  wb.pipe(fs.createWriteStream(dotfile));
+    console.error(String(err))
+  })
+  wb.on('end', end)
+  wb.pipe(fs.createWriteStream(dotfile))
 
-  function end() {
+  function end () {
     fs.rename(dotfile, outfile, function (err) {
-      if (err) { return console.error(err); }
-      console.log('Updated:', outfile);
-      filesWritten = true;
-      checkReady();
-    });
+      if (err) { return console.error(err) }
+      console.log('Updated:', outfile)
+      filesWritten = true
+      checkReady()
+    })
   }
 }
 
-function startServers(callback) {
-  readyCallback = callback;
+function startServers (callback) {
+  readyCallback = callback
   // enable CORS globally, because it's easier this way
 
-  var corsValues = {
+  const corsValues = {
     '/_config/httpd/enable_cors': 'true',
     '/_config/cors/origins': '*',
     '/_config/cors/credentials': 'true',
@@ -62,37 +62,37 @@ function startServers(callback) {
         'If-Modified-Since, Overwrite, User-Agent, X-File-Name, ' +
         'X-File-Size, X-Requested-With, accept, accept-encoding, ' +
         'accept-language, authorization, content-type, origin, referer'
-  };
+  }
 
   Promise.all(Object.keys(corsValues).map(function (key) {
-    var value = corsValues[key];
+    const value = corsValues[key]
     return request({
       method: 'put',
       url: COUCH_HOST + key,
       body: JSON.stringify(value)
-    });
+    })
   })).then(function () {
-    return http_server.createServer().listen(HTTP_PORT);
+    return http_server.createServer().listen(HTTP_PORT)
   }).then(function () {
-    console.log('Tests: http://127.0.0.1:' + HTTP_PORT + '/test/index.html');
-    serverStarted = true;
-    checkReady();
+    console.log('Tests: http://127.0.0.1:' + HTTP_PORT + '/test/index.html')
+    serverStarted = true
+    checkReady()
   }).catch(function (err) {
     if (err) {
-      console.log(err);
-      process.exit(1);
+      console.log(err)
+      process.exit(1)
     }
-  });
+  })
 }
 
-function checkReady() {
+function checkReady () {
   if (filesWritten && serverStarted && readyCallback) {
-    readyCallback();
+    readyCallback()
   }
 }
 
 if (require.main === module) {
-  startServers();
+  startServers()
 } else {
-  module.exports.start = startServers;
+  module.exports.start = startServers
 }
