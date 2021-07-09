@@ -4,12 +4,12 @@ services:
   - couchdb
 
 node_js:
-  - "5"
+  - 12
+  - 14
 sudo: false
 script: npm run $COMMAND
 before_script:
-  - "npm install add-cors-to-couchdb"
-  - "./node_modules/.bin/add-cors-to-couchdb"
+  - curl -X PUT http://localhost:5984/testdb
 
 env:
   matrix:
