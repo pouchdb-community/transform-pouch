@@ -25,7 +25,7 @@
     "test-browser": "./bin/test-browser.js",
     "jshint": "jshint -c .jshintrc *.js test/test.js",
     "test": "npm run jshint && ./bin/run-test.sh",
-    "build": "mkdir -p dist && browserify -t es3ify index.js -o dist/pouchdb.transform-pouch.js && npm run min",
+    "build": "mkdir -p dist && browserify index.js -o dist/pouchdb.transform-pouch.js && npm run min",
     "min": "uglifyjs dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
     "dev": "browserify test/test.js > test/test-bundle.js && npm run dev-server",
     "dev-server": "./bin/dev-server.js",
@@ -33,13 +33,12 @@
   },
   "dependencies": {
     "argsarray": "0.0.1",
-    "es3ify": "0.2.2",
+    "immediate": "~3.0.5",
     "inherits": "2.0.1",
     "lie": "3.0.4",
     "pouchdb-extend": "0.1.2",
     "pouchdb-promise": "5.4.3",
-    "pouchdb-wrappers": "https://github.com/neighbourhoodie/pouchdb-wrappers.git#mergemaster",
-    "immediate": "~3.0.5"
+    "pouchdb-wrappers": "https://github.com/neighbourhoodie/pouchdb-wrappers.git#mergemaster"
   },
   "devDependencies": {
     "bluebird": "^1.0.7",
