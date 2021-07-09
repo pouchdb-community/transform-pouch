@@ -21,7 +21,7 @@
     "url": "https://github.com/nolanlawson/transform-pouch/issues"
   },
   "scripts": {
-    "test-node": "TEST_DB=testdb,http://localhost:5984/testdb istanbul test ./node_modules/mocha/bin/_mocha test/test.js",
+    "test-node": "TEST_DB=testdb,http://localhost:5984/testdb nyc ./node_modules/mocha/bin/_mocha test/test.js",
     "test-browser": "./bin/test-browser.js",
     "jshint": "jshint -c .jshintrc *.js test/test.js",
     "test": "npm run jshint && ./bin/run-test.sh",
@@ -29,7 +29,7 @@
     "min": "uglifyjs dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
     "dev": "browserify test/test.js > test/test-bundle.js && npm run dev-server",
     "dev-server": "./bin/dev-server.js",
-    "coverage": "npm test --coverage && istanbul check-coverage --lines 100 --function 100 --statements 100 --branches 100"
+    "coverage": "nyc npm test"
   },
   "dependencies": {
     "argsarray": "0.0.1",
@@ -47,9 +47,9 @@
     "chai": "^3.5.0",
     "chai-as-promised": "^5.3.0",
     "http-server": "~0.5.5",
-    "istanbul": "^0.2.7",
     "jshint": "~2.8.0",
     "mocha": "^2.4.5",
+    "nyc": "^15.1.0",
     "phantomjs-prebuilt": "^2.1.7",
     "pouchdb-adapter-http": "^7.2.2",
     "pouchdb-adapter-memory": "^7.2.2",
