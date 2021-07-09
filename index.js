@@ -27,13 +27,13 @@ exports.transform = exports.filter = function transform (config) {
 
   const incoming = function (doc) {
     if (!isUntransformable(doc) && config.incoming) {
-      return config.incoming(utils.clone(doc))
+      return config.incoming(doc)
     }
     return doc
   }
   const outgoing = function (doc) {
     if (!isUntransformable(doc) && config.outgoing) {
-      return config.outgoing(utils.clone(doc))
+      return config.outgoing(doc)
     }
     return doc
   }
