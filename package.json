@@ -32,7 +32,6 @@
     "coverage": "nyc npm test"
   },
   "dependencies": {
-    "immediate": "~3.0.5",
     "pouchdb-wrappers": "https://github.com/neighbourhoodie/pouchdb-wrappers.git#mergemaster"
   },
   "devDependencies": {

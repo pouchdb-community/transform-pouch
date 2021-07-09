@@ -2,7 +2,6 @@
 
 const utils = require('./pouch-utils')
 const wrappers = require('pouchdb-wrappers')
-const immediate = require('immediate')
 
 function isntInternalKey (key) {
   return key[0] !== '_'
@@ -183,7 +182,7 @@ exports.transform = exports.filter = function transform (config) {
       if (event === 'change') {
         return origOn.apply(changes, [event, function (change) {
           modifyChange(change).then(function (resp) {
-            immediate(function () {
+            process.nextTick(function () {
               listener(resp)
             })
           })
