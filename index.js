@@ -48,18 +48,18 @@ exports.transform = exports.filter = function transform (config) {
     handlers.put = function (orig, args) {
       try {
         args.doc = incoming(args.doc)
-        return utils.Promise.resolve(args.doc).then(function (doc) {
+        return Promise.resolve(args.doc).then(function (doc) {
           args.doc = doc
           return orig()
         })
       } catch (error) {
-        return utils.Promise.reject(error)
+        return Promise.reject(error)
       }
     }
     handlers.query = function (orig) {
       const none = {}
       return orig().then(function (res) {
-        return utils.Promise.all(res.rows.map(function (row) {
+        return Promise.all(res.rows.map(function (row) {
           if (row.doc) {
             return outgoing(row.doc)
           }
@@ -82,7 +82,7 @@ exports.transform = exports.filter = function transform (config) {
       if (Array.isArray(res)) {
         const none = {}
         // open_revs style, it's a list of docs
-        return utils.Promise.all(res.map(function (row) {
+        return Promise.all(res.map(function (row) {
           if (row.ok) {
             return outgoing(row.ok)
           }
@@ -115,7 +115,7 @@ exports.transform = exports.filter = function transform (config) {
   handlers.allDocs = function (orig) {
     return orig().then(function (res) {
       const none = {}
-      return utils.Promise.all(res.rows.map(function (row) {
+      return Promise.all(res.rows.map(function (row) {
         if (row.doc) {
           return outgoing(row.doc)
         }
@@ -135,7 +135,7 @@ exports.transform = exports.filter = function transform (config) {
   handlers.bulkGet = function (orig) {
     return orig().then(function (res) {
       const none = {}
-      return utils.Promise.all(res.results.map(function (result) {
+      return Promise.all(res.results.map(function (result) {
         if (result.id && result.docs && Array.isArray(result.docs)) {
           return {
             docs: result.docs.map(function (doc) {
@@ -158,22 +158,22 @@ exports.transform = exports.filter = function transform (config) {
   handlers.changes = function (orig) {
     function modifyChange (change) {
       if (change.doc) {
-        return utils.Promise.resolve(outgoing(change.doc)).then(function (doc) {
+        return Promise.resolve(outgoing(change.doc)).then(function (doc) {
           change.doc = doc
           return change
         })
       }
-      return utils.Promise.resolve(change)
+      return Promise.resolve(change)
     }
 
     function modifyChanges (res) {
       if (res.results) {
-        return utils.Promise.all(res.results.map(modifyChange)).then(function (results) {
+        return Promise.all(res.results.map(modifyChange)).then(function (results) {
           res.results = results
           return res
         })
       }
-      return utils.Promise.resolve(res)
+      return Promise.resolve(res)
     }
 
     const changes = orig()

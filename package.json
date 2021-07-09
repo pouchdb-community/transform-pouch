@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "immediate": "~3.0.5",
-    "pouchdb-promise": "5.4.3",
     "pouchdb-wrappers": "https://github.com/neighbourhoodie/pouchdb-wrappers.git#mergemaster"
   },
   "devDependencies": {

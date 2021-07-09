@@ -1,7 +1,5 @@
 'use strict'
 
-const Promise = require('pouchdb-promise')
-
 exports.once = function (fun) {
   let called = false
   return exports.getArguments(function (args) {
