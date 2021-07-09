@@ -1,0 +1,23 @@
+name: Transform Pouch CI
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      couchdb:
+        image: couchdb
+    strategy:
+      matrix:
+        node: [12, 14]
+        command: [COMMAND=test, CLIENT=selenium:phantomjs COMMAND=test, COMMAND=coverage]
+    steps:
+      - uses: actions/checkout@v2
+      - name: build
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+      - run: |
+          npm run ${{ matrix.command }}
