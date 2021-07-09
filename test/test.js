@@ -10,8 +10,6 @@ const plugin = require('../')
 Pouch.plugin(plugin)
 
 const chai = require('chai')
-chai.use(require('chai-as-promised'))
-
 const should = chai.should()
 
 const COUCH_URL = process.env.COUCH_URL || 'http://localhost:5984'
