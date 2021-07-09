@@ -73,8 +73,6 @@ exports.toPromise = function (func) {
   })
 }
 
-exports.inherits = require('inherits')
-
 exports.clone = function (obj) {
   return exports.extend(true, {}, obj)
 }
