@@ -1,7 +1,7 @@
 'use strict'
 
 const Promise = require('pouchdb-promise')
-/* istanbul ignore next */
+
 exports.once = function (fun) {
   let called = false
   return exports.getArguments(function (args) {
@@ -14,7 +14,7 @@ exports.once = function (fun) {
     }
   })
 }
-/* istanbul ignore next */
+
 exports.getArguments = function (fun) {
   return function () {
     const len = arguments.length
@@ -26,7 +26,7 @@ exports.getArguments = function (fun) {
     return fun.call(this, args)
   }
 }
-/* istanbul ignore next */
+
 exports.toPromise = function (func) {
   // create the function we will be returning
   return exports.getArguments(function (args) {
@@ -74,8 +74,7 @@ exports.toPromise = function (func) {
 }
 
 exports.inherits = require('inherits')
-exports.Promise = Promise
-exports.extend = require('pouchdb-extend')
+
 exports.clone = function (obj) {
   return exports.extend(true, {}, obj)
 }
