@@ -1,6 +1,5 @@
 'use strict';
 
-var Promise = require('lie');
 var utils = require('./pouch-utils');
 var wrappers = require('pouchdb-wrappers');
 var immediate = require('immediate');

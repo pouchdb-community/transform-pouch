@@ -14,7 +14,6 @@ var chai = require('chai');
 chai.use(require("chai-as-promised"));
 
 var should = chai.should();
-var Promise = require('lie');
 
 var COUCH_URL = process.env.COUCH_URL || 'http://localhost:5984';
 var DB_NAME = 'testdb';
