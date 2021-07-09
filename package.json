@@ -32,7 +32,6 @@
     "coverage": "nyc npm test"
   },
   "dependencies": {
-    "argsarray": "0.0.1",
     "immediate": "~3.0.5",
     "inherits": "2.0.1",
     "lie": "3.0.4",
