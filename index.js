@@ -1,6 +1,5 @@
 'use strict'
 
-const utils = require('./pouch-utils')
 const wrappers = require('pouchdb-wrappers')
 
 function isntInternalKey (key) {
@@ -8,7 +7,7 @@ function isntInternalKey (key) {
 }
 
 function isUntransformable (doc) {
-  const isLocal = typeof doc._id === 'string' && utils.isLocalId(doc._id)
+  const isLocal = typeof doc._id === 'string' && (/^_local/).test(doc._id)
 
   if (isLocal) {
     return true

@@ -57,8 +57,7 @@
   },
   "files": [
     "dist",
-    "index.js",
-    "pouch-utils.js"
+    "index.js"
   ],
   "standard": {
     "globals": [
