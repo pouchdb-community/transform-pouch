@@ -2,16 +2,18 @@
 
 const wrappers = require('pouchdb-wrappers')
 
+// determine if a document key is an internal field like _rev
 function isntInternalKey (key) {
   return key[0] !== '_'
 }
 
+// determine if a document should be transformed
 function isUntransformable (doc) {
-  // is local
+  // do not transform local documents
   if (typeof doc._id === 'string' && (/^_local/).test(doc._id)) {
     return true
   }
-
+  // do not transform document tombstones
   if (doc._deleted) {
     return Object.keys(doc).filter(isntInternalKey).length === 0
   }
@@ -19,8 +21,13 @@ function isUntransformable (doc) {
   return false
 }
 
-// api.filter provided for backwards compat with the old "filter-pouch"
-exports.transform = exports.filter = function transform (config) {
+module.exports = {
+  transform,
+  // api.filter provided for backwards compat with the old "filter-pouch"
+  filter: transform
+}
+
+function transform (config) {
   const db = this
 
   const incoming = function (doc) {

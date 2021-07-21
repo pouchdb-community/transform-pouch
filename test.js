@@ -1,20 +1,14 @@
+/* global describe, it, beforeEach, afterEach, emit, atob, btoa */
 'use strict'
 
-const Pouch = require('pouchdb-core')
-  .plugin(require('pouchdb-mapreduce'))
-  .plugin(require('pouchdb-replication'))
-  .plugin(require('pouchdb-adapter-memory'))
-  .plugin(require('pouchdb-adapter-http'))
-
-const plugin = require('../')
-Pouch.plugin(plugin)
-
-const chai = require('chai')
-const should = chai.should()
+const assert = require('assert').strict
+const PouchDB = require('pouchdb')
+PouchDB.plugin(require('.'))
 
 const COUCH_URL = process.env.COUCH_URL || 'http://localhost:5984'
 const DB_NAME = 'testdb';
 
+// run tests for local and http adapters
 [DB_NAME, COUCH_URL + '/' + DB_NAME].forEach(function (db) {
   const dbType = /^http/.test(db) ? 'http' : 'local'
   tests(db, dbType)
@@ -27,41 +21,41 @@ function tests (dbName, dbType) {
     let db
 
     beforeEach(function () {
-      db = new Pouch(dbName)
+      db = new PouchDB(dbName)
       return db
     })
     afterEach(function () {
       return db.destroy()
     })
 
-    it('transforms on PUT', function () {
+    it('transforms on PUT', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo')
-      }).then(function (doc) {
-        doc._id.should.equal('foo')
-        doc.foo.should.equal('baz')
-      })
+
+      await db.put({ _id: 'foo' })
+      const doc = await db.get('foo')
+
+      assert.equal(doc._id, 'foo')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('transforms on PUT, with a promise', function () {
+    it('transforms on PUT, with a promise', async function () {
+      const id = 'foo'
+      const val = 'baz'
       db.transform({
         incoming: function (doc) {
-          doc.foo = 'baz'
-          return Promise.resolve(doc)
+          doc.foo = val
+          return doc
         }
       })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo')
-      }).then(function (doc) {
-        doc._id.should.equal('foo')
-        doc.foo.should.equal('baz')
-      })
+      await db.put({ _id: id })
+      const doc = await db.get(id)
+      assert.equal(doc._id, id)
+      assert.equal(doc.foo, val)
     })
 
     it('transforms on POST', function () {
@@ -74,8 +68,8 @@ function tests (dbName, dbType) {
       return db.post({}).then(function (res) {
         return db.get(res.id)
       }).then(function (doc) {
-        doc._id.should.be.a('string')
-        doc.foo.should.equal('baz')
+        assert.equal(typeof doc._id, 'string')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -89,8 +83,8 @@ function tests (dbName, dbType) {
       return db.post({}).then(function (res) {
         return db.get(res.id)
       }).then(function (doc) {
-        doc._id.should.be.a('string')
-        doc.foo.should.equal('baz')
+        assert.equal(typeof doc._id, 'string')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -104,8 +98,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'foo' }).then(function () {
         return db.get('foo')
       }).then(function (doc) {
-        doc._id.should.equal('foo')
-        doc.foo.should.equal('baz')
+        assert.equal(doc._id, 'foo')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -119,8 +113,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'foo' }).then(function () {
         return db.get('foo')
       }).then(function (doc) {
-        doc._id.should.equal('foo')
-        doc.foo.should.equal('baz')
+        assert.equal(doc._id, 'foo')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -134,8 +128,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: '_local/foo' }).then(function () {
         return db.get('_local/foo')
       }).then(function (doc) {
-        doc._id.should.equal('_local/foo')
-        should.not.exist(doc.foo)
+        assert.equal(doc._id, '_local/foo')
+        assert(!('foo' in doc))
       })
     })
 
@@ -149,8 +143,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: '_local/foo' }).then(function () {
         return db.get('_local/foo')
       }).then(function (doc) {
-        doc._id.should.equal('_local/foo')
-        should.not.exist(doc.foo)
+        assert.equal(doc._id, '_local/foo')
+        assert(!('foo' in doc))
       })
     })
 
@@ -164,8 +158,8 @@ function tests (dbName, dbType) {
       return db.post({ _id: '_local/foo' }).then(function () {
         return db.get('_local/foo')
       }).then(function (doc) {
-        doc._id.should.equal('_local/foo')
-        should.not.exist(doc.foo)
+        assert.equal(doc._id, '_local/foo')
+        assert(!('foo' in doc))
       })
     })
 
@@ -179,8 +173,8 @@ function tests (dbName, dbType) {
       return db.bulkDocs([{ _id: '_local/foo' }]).then(function () {
         return db.get('_local/foo')
       }).then(function (doc) {
-        doc._id.should.equal('_local/foo')
-        should.not.exist(doc.foo)
+        assert.equal(doc._id, '_local/foo')
+        assert(!('foo' in doc))
       })
     })
 
@@ -199,7 +193,7 @@ function tests (dbName, dbType) {
         })
 
         return db.remove(doc).then(function () {
-          transformCalledOnDelete.should.equal(false)
+          assert.equal(transformCalledOnDelete, false)
         })
       })
     })
@@ -221,7 +215,7 @@ function tests (dbName, dbType) {
         doc.foo = 'baz'
         doc._deleted = true
         return db.put(doc).then(function () {
-          transformCalledOnDelete.should.equal(true)
+          assert.equal(transformCalledOnDelete, true)
         })
       })
     })
@@ -235,9 +229,9 @@ function tests (dbName, dbType) {
       })
       const doc = { _id: 'foo' }
       return db.put(doc).then(function (res) {
-        should.not.exist(res)
+        assert.equal(res, undefined)
       }).catch(function (err) {
-        should.exist(err)
+        assert.notEqual(err, undefined)
       })
     })
 
@@ -249,9 +243,9 @@ function tests (dbName, dbType) {
       })
       const doc = { _id: 'foo' }
       return db.put(doc).then(function (res) {
-        should.not.exist(res)
+        assert.equal(res, undefined)
       }).catch(function (err) {
-        should.exist(err)
+        assert.notEqual(err, undefined)
       })
     })
 
@@ -271,8 +265,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'foo' }).then(function () {
         return db.get('foo', {})
       }).then(function (doc) {
-        doc._id.should.equal('foo')
-        doc.foo.should.equal('baz')
+        assert.equal(doc._id, 'foo')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -286,8 +280,8 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'foo' }).then(function () {
         return db.get('foo', { revs: true, open_revs: ['1-DNE'] })
       }).then(function (docs) {
-        docs.should.have.length(1)
-        docs[0].missing.should.equal('1-DNE')
+        assert.equal(docs.length, 1)
+        assert.equal(docs[0].missing, '1-DNE')
       })
     })
 
@@ -303,11 +297,11 @@ function tests (dbName, dbType) {
         rev = res.rev
         return db.get('foo', { revs: true, open_revs: ['1-DNE', rev] })
       }).then(function (docs) {
-        docs.should.have.length(2)
+        assert.equal(docs.length, 2)
         const okRes = docs[0].ok ? docs[0] : docs[1]
         const missingRes = docs[0].ok ? docs[1] : docs[0]
-        missingRes.missing.should.equal('1-DNE')
-        okRes.ok._rev.should.equal(rev)
+        assert.equal(missingRes.missing, '1-DNE')
+        assert.equal(okRes.ok._rev, rev)
       })
     })
 
@@ -321,9 +315,9 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'foo' }).then(function () {
         return db.get('quux')
       }).then(function (doc) {
-        should.not.exist(doc)
+        assert.equal(doc, undefined)
       }).catch(function (err) {
-        should.exist(err)
+        assert.notEqual(err, undefined)
       })
     })
 
@@ -336,11 +330,11 @@ function tests (dbName, dbType) {
       })
       return db.bulkDocs([{ _id: 'toto' }, { _id: 'lala' }]).then(function (res) {
         return db.get(res[0].id).then(function (doc) {
-          doc.foo.should.equal('toto_baz')
+          assert.equal(doc.foo, 'toto_baz')
         }).then(function () {
           return db.get(res[1].id)
         }).then(function (doc) {
-          doc.foo.should.equal('lala_baz')
+          assert.equal(doc.foo, 'lala_baz')
         })
       })
     })
@@ -422,19 +416,19 @@ function tests (dbName, dbType) {
       ]
       return db.bulkDocs({ docs: docsA, new_edits: false }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       }).then(function () {
         return db.bulkDocs({ docs: docsB, new_edits: false })
       }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       }).then(function () {
         return db.bulkDocs({ docs: docsC, new_edits: false })
       }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       })
     })
@@ -516,19 +510,19 @@ function tests (dbName, dbType) {
       ]
       return db.bulkDocs(docsA, { new_edits: false }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       }).then(function () {
         return db.bulkDocs(docsB, { new_edits: false })
       }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       }).then(function () {
         return db.bulkDocs(docsC, { new_edits: false })
       }).then(function (results) {
         results.forEach(function (result) {
-          should.not.exist(result.error, 'no doc update coflict')
+          assert(!('error' in result), 'no doc update coflict')
         })
       })
     })
@@ -542,11 +536,11 @@ function tests (dbName, dbType) {
       })
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function (res) {
         return db.get(res[0].id).then(function (doc) {
-          doc.foo.should.equal('toto_baz')
+          assert.equal(doc.foo, 'toto_baz')
         }).then(function () {
           return db.get(res[1].id)
         }).then(function (doc) {
-          doc.foo.should.equal('lala_baz')
+          assert.equal(doc.foo, 'lala_baz')
         })
       })
     })
@@ -560,9 +554,9 @@ function tests (dbName, dbType) {
       })
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
         return db.allDocs({ include_docs: true }).then(function (res) {
-          res.rows.should.have.length(2)
-          res.rows[0].doc.foo.should.equal('lala_baz')
-          res.rows[1].doc.foo.should.equal('toto_baz')
+          assert.equal(res.rows.length, 2)
+          assert.equal(res.rows[0].doc.foo, 'lala_baz')
+          assert.equal(res.rows[1].doc.foo, 'toto_baz')
         })
       })
     })
@@ -576,9 +570,9 @@ function tests (dbName, dbType) {
       })
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
         return db.allDocs({ include_docs: true }).then(function (res) {
-          res.rows.should.have.length(2)
-          res.rows[0].doc.foo.should.equal('lala_baz')
-          res.rows[1].doc.foo.should.equal('toto_baz')
+          assert.equal(res.rows.length, 2)
+          assert.equal(res.rows[0].doc.foo, 'lala_baz')
+          assert.equal(res.rows[1].doc.foo, 'toto_baz')
         })
       })
     })
@@ -592,9 +586,9 @@ function tests (dbName, dbType) {
       })
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
         return db.allDocs().then(function (res) {
-          res.rows.should.have.length(2)
-          should.not.exist(res.rows[0].doc)
-          should.not.exist(res.rows[1].doc)
+          assert.equal(res.rows.length, 2)
+          assert(!('doc' in res.rows[0]))
+          assert(!('doc' in res.rows[1]))
         })
       })
     })
@@ -620,9 +614,9 @@ function tests (dbName, dbType) {
 
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
         return db.query('index', { include_docs: true }).then(function (res) {
-          res.rows.should.have.length(2)
-          res.rows[0].doc.foo.should.equal('lala_baz')
-          res.rows[1].doc.foo.should.equal('toto_baz')
+          assert.equal(res.rows.length, 2)
+          assert.equal(res.rows[0].doc.foo, 'lala_baz')
+          assert.equal(res.rows[1].doc.foo, 'toto_baz')
         })
       })
     })
@@ -646,9 +640,9 @@ function tests (dbName, dbType) {
       }
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
         return db.query('index', { include_docs: true }).then(function (res) {
-          res.rows.should.have.length(2)
-          res.rows[0].doc.foo.should.equal('lala_baz')
-          res.rows[1].doc.foo.should.equal('toto_baz')
+          assert.equal(res.rows.length, 2)
+          assert.equal(res.rows[0].doc.foo, 'lala_baz')
+          assert.equal(res.rows[1].doc.foo, 'toto_baz')
         })
       })
     })
@@ -672,9 +666,9 @@ function tests (dbName, dbType) {
       }
       return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
         return db.query('index').then(function (res) {
-          res.rows.should.have.length(2)
-          should.not.exist(res.rows[0].doc)
-          should.not.exist(res.rows[1].doc)
+          assert.equal(res.rows.length, 2)
+          assert(!('doc' in res.rows[0]))
+          assert(!('doc' in res.rows[1]))
         })
       })
     })
@@ -693,7 +687,7 @@ function tests (dbName, dbType) {
       return db.put({ _id: 'doc', foo: 'bar' }).then(function () {
         return db.get('doc')
       }).then(function (doc) {
-        doc.foo.should.equal('bar')
+        assert.equal(doc.foo, 'bar')
       })
     })
   })
@@ -704,7 +698,7 @@ function tests (dbName, dbType) {
     let db
 
     beforeEach(function () {
-      db = new Pouch(dbName)
+      db = new PouchDB(dbName)
       return db
     })
     afterEach(function () {
@@ -764,16 +758,18 @@ function tests (dbName, dbType) {
       })
     }
 
-    it('test encryption/decryption with puts', function () {
+    it('test encryption/decryption with puts', async function () {
       transform(db)
-      return db.put({ _id: 'doc', secret: 'my super secret text!' }).then(function () {
-        return db.get('doc')
-      }).then(function (doc) {
-        doc.secret.should.equal('my super secret text!')
-        return new Pouch(dbName).get('doc')
-      }).then(function (doc) {
-        doc.secret.should.equal(encrypt('my super secret text!'))
-      })
+      const id = 'doc'
+      const secret = 'my super secret text!'
+      await db.put({ _id: id, secret })
+      // check that it gets decrypted
+      let doc = await db.get(id)
+      assert.equal(doc.secret, secret)
+      // check that it's encrypted
+      const db2 = new PouchDB(dbName)
+      doc = await db2.get(id)
+      assert.equal(doc.secret, encrypt(secret))
     })
 
     it('test encryption/decryption with posts', function () {
@@ -783,24 +779,26 @@ function tests (dbName, dbType) {
         id = res.id
         return db.get(res.id)
       }).then(function (doc) {
-        doc.secret.should.equal('my super secret text!')
-        return new Pouch(dbName).get(id)
+        assert.equal(doc.secret, 'my super secret text!')
+        return new PouchDB(dbName).get(id)
       }).then(function (doc) {
-        doc.secret.should.equal(encrypt('my super secret text!'))
+        assert.equal(doc.secret, encrypt('my super secret text!'))
       })
     })
 
     it('test encryption/decryption with bulkdocs/alldocs', function () {
+      const id = 'doc'
+      const secret = 'my super secret text!'
       transform(db)
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
-        return db.allDocs({ keys: ['doc'], include_docs: true })
+      return db.bulkDocs([{ _id: id, secret }]).then(function () {
+        return db.allDocs({ keys: [id], include_docs: true })
       }).then(function (res) {
-        res.rows.should.have.length(1)
-        res.rows[0].doc.secret.should.equal('my super secret text!')
-        return new Pouch(dbName).allDocs({ keys: ['doc'], include_docs: true })
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].doc.secret, secret)
+        return new PouchDB(dbName).allDocs({ keys: [id], include_docs: true })
       }).then(function (res) {
-        res.rows.should.have.length(1)
-        res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'))
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].doc.secret, encrypt(secret))
       })
     })
 
@@ -821,12 +819,12 @@ function tests (dbName, dbType) {
       return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }, ddoc]).then(function () {
         return db.query('index', { keys: ['doc'], include_docs: true })
       }).then(function (res) {
-        res.rows.should.have.length(1)
-        res.rows[0].doc.secret.should.equal('my super secret text!')
-        return new Pouch(dbName).query('index', { keys: ['doc'], include_docs: true })
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].doc.secret, 'my super secret text!')
+        return new PouchDB(dbName).query('index', { keys: ['doc'], include_docs: true })
       }).then(function (res) {
-        res.rows.should.have.length(1)
-        res.rows[0].doc.secret.should.equal(encrypt('my super secret text!'))
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].doc.secret, encrypt('my super secret text!'))
       })
     })
 
@@ -842,12 +840,12 @@ function tests (dbName, dbType) {
       return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
         return changesCompletePromise(db, { include_docs: true })
       }).then(function (res) {
-        res.results.should.have.length(1)
-        res.results[0].doc.secret.should.equal('my super secret text!')
-        return changesCompletePromise(new Pouch(dbName), { include_docs: true })
+        assert.equal(res.results.length, 1)
+        assert.equal(res.results[0].doc.secret, 'my super secret text!')
+        return changesCompletePromise(new PouchDB(dbName), { include_docs: true })
       }).then(function (res) {
-        res.results.should.have.length(1)
-        res.results[0].doc.secret.should.equal(encrypt('my super secret text!'))
+        assert.equal(res.results.length, 1)
+        assert.equal(res.results[0].doc.secret, encrypt('my super secret text!'))
       })
     })
 
@@ -863,49 +861,43 @@ function tests (dbName, dbType) {
       return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
         return changesCompletePromise(db, { include_docs: true })
       }).then(function (res) {
-        res.doc.secret.should.equal('my super secret text!')
-        return changesCompletePromise(new Pouch(dbName), { include_docs: true })
+        assert.equal(res.doc.secret, 'my super secret text!')
+        return changesCompletePromise(new PouchDB(dbName), { include_docs: true })
       }).then(function (res) {
-        res.doc.secret.should.equal(encrypt('my super secret text!'))
+        assert.equal(res.doc.secret, encrypt('my super secret text!'))
       })
     })
 
-    it('test encryption/decryption with bulkdocs/changes complete, promise style', function () {
+    it('test encryption/decryption with bulkdocs/changes complete, promise style', async function () {
       transform(db)
+      const id = 'doc'
+      const secret = 'my super secret text!'
 
-      function changesCompletePromise (db, opts) {
-        return db.changes(opts)
-      }
+      function changesCompletePromise (db, opts) { return db.changes(opts) }
 
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
-        return changesCompletePromise(db, { include_docs: true })
-      }).then(function (res) {
-        res.results.should.have.length(1)
-        res.results[0].doc.secret.should.equal('my super secret text!')
-        return changesCompletePromise(new Pouch(dbName), { include_docs: true })
-      }).then(function (res) {
-        res.results.should.have.length(1)
-        res.results[0].doc.secret.should.equal(encrypt('my super secret text!'))
-      })
+      await db.bulkDocs([{ _id: id, secret }])
+      let res = await changesCompletePromise(db, { include_docs: true })
+      assert.equal(res.results.length, 1)
+      assert.equal(res.results[0].doc.secret, secret)
+      res = await changesCompletePromise(new PouchDB(dbName), { include_docs: true })
+      assert.equal(res.results.length, 1)
+      assert.equal(res.results[0].doc.secret, encrypt(secret))
     })
 
-    it('test encryption/decryption with bulkdocs/changes complete, no docs', function () {
+    it('test encryption/decryption with bulkdocs/changes complete, no docs', async function () {
       transform(db)
+      const id = 'doc'
+      const secret = 'my super secret text!'
 
-      function changesCompletePromise (db, opts) {
-        return db.changes(opts)
-      }
+      function changesCompletePromise (db, opts) { return db.changes(opts) }
 
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
-        return changesCompletePromise(db, {})
-      }).then(function (res) {
-        res.results.should.have.length(1)
-        should.not.exist(res.results[0].doc)
-        return changesCompletePromise(new Pouch(dbName), {})
-      }).then(function (res) {
-        res.results.should.have.length(1)
-        should.not.exist(res.results[0].doc)
-      })
+      await db.bulkDocs([{ _id: id, secret }])
+      let res = await changesCompletePromise(db, {})
+      assert.equal(res.results.length, 1)
+      assert(!('doc' in res.results[0]))
+      res = await changesCompletePromise(new PouchDB(dbName), {})
+      assert.equal(res.results.length, 1)
+      assert(!('doc' in res.results[0]))
     })
 
     it('makes sure that the .changes wrapper returns the value (#43)', function () {
@@ -930,7 +922,7 @@ function tests (dbName, dbType) {
           return db.query('some_view')
         })
         .then(function (response) {
-          response.rows.should.have.length(1)
+          assert.equal(response.rows.length, 1)
         })
     })
 
@@ -939,20 +931,22 @@ function tests (dbName, dbType) {
     if (dbType === 'local') {
       it('test encryption/decryption with map/reduce', function () {
         transform(db)
+        const id = 'doc'
+        const secret = 'my super secret text!'
         const mapFun = {
           map: function (doc) {
             emit(doc.secret)
           }
         }
-        return db.put({ _id: 'doc', secret: 'my super secret text!' }).then(function () {
+        return db.put({ _id: id, secret }).then(function () {
           return db.query(mapFun)
         }).then(function (res) {
-          res.rows.should.have.length(1)
-          res.rows[0].key.should.equal('my super secret text!')
-          return new Pouch(dbName).query(mapFun)
+          assert.equal(res.rows.length, 1)
+          assert.equal(res.rows[0].key, secret)
+          return new PouchDB(dbName).query(mapFun)
         }).then(function (res) {
-          res.rows.should.have.length(1)
-          res.rows[0].key.should.equal(encrypt('my super secret text!'))
+          assert.equal(res.rows.length, 1)
+          assert.equal(res.rows[0].key, encrypt(secret))
         })
       })
     }
@@ -979,8 +973,8 @@ function tests (dbName, dbType) {
     }
 
     beforeEach(function () {
-      db = new Pouch(dbName)
-      remote = new Pouch(dbName + '_other')
+      db = new PouchDB(dbName)
+      remote = new PouchDB(dbName + '_other')
     })
 
     afterEach(function () {
@@ -1004,7 +998,7 @@ function tests (dbName, dbType) {
       }).then(function () {
         return db.get('doc')
       }).then(function (doc) {
-        doc.foo.should.equal('baz')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -1023,7 +1017,7 @@ function tests (dbName, dbType) {
       }).then(function () {
         return remote.get('doc')
       }).then(function (doc) {
-        doc.foo.should.equal('baz')
+        assert.equal(doc.foo, 'baz')
       })
     })
 
@@ -1072,9 +1066,9 @@ function tests (dbName, dbType) {
       }).then(function () {
         return db.get('doc')
       }).then(function (doc) {
-        doc.should.have.property('boo')
-        doc.should.have.property('foo')
-        doc.foo.should.equal('baz')
+        assert('boo' in doc)
+        assert('foo' in doc)
+        assert.equal(doc.foo, 'baz')
         return remote.get('doc')
       }).then(function (doc) {
         // Reset the incoming listener
@@ -1086,12 +1080,12 @@ function tests (dbName, dbType) {
       }).then(function () {
         return db.get('doc')
       }).then(function (doc) {
-        doc.should.have.property('moo')
-        doc.should.have.property('foo')
-        doc.should.have.property('boo')
-        doc.foo.should.equal('baz')
-        doc.moo.should.equal('bar')
-        doc.boo.should.equal('lal')
+        assert('moo' in doc)
+        assert('foo' in doc)
+        assert('boo' in doc)
+        assert.equal(doc.foo, 'baz')
+        assert.equal(doc.moo, 'bar')
+        assert.equal(doc.boo, 'lal')
       })
 
       result.then(function () {

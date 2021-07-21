@@ -5,3 +5,4 @@ node_modules
 test/test-bundle.js
 npm-debug.log
 dist
+my_gateway/
