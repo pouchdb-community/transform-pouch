@@ -42,167 +42,115 @@ exports.transform = exports.filter = function transform (config) {
     // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
     // which the adapter does.
     // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
-    handlers.put = function (orig, args) {
-      try {
-        args.doc = incoming(args.doc)
-        return Promise.resolve(args.doc).then(function (doc) {
-          args.doc = doc
-          return orig()
-        })
-      } catch (error) {
-        return Promise.reject(error)
-      }
-    }
-    handlers.query = function (orig) {
-      const none = {}
-      return orig().then(function (res) {
-        return Promise.all(res.rows.map(function (row) {
-          if (row.doc) {
-            return outgoing(row.doc)
-          }
-          return none
-        })).then(function (resp) {
-          resp.forEach(function (doc, i) {
-            if (doc === none) {
-              return
-            }
-            res.rows[i].doc = doc
-          })
-          return res
-        })
-      })
-    }
-  }
-
-  handlers.get = function (orig) {
-    return orig().then(function (res) {
-      if (Array.isArray(res)) {
-        const none = {}
-        // open_revs style, it's a list of docs
-        return Promise.all(res.map(function (row) {
-          if (row.ok) {
-            return outgoing(row.ok)
-          }
-          return none
-        })).then(function (resp) {
-          resp.forEach(function (doc, i) {
-            if (doc === none) {
-              return
-            }
-            res[i].ok = doc
-          })
-          return res
-        })
-      } else {
-        return outgoing(res)
-      }
-    })
-  }
-
-  handlers.bulkDocs = function (orig, args) {
-    for (let i = 0; i < args.docs.length; i++) {
-      args.docs[i] = incoming(args.docs[i])
-    }
-    return Promise.all(args.docs).then(function (docs) {
-      args.docs = docs
+    handlers.put = async function (orig, args) {
+      args.doc = await incoming(args.doc)
       return orig()
-    })
-  }
+    }
+    handlers.query = async function (orig) {
+      const response = await orig()
 
-  handlers.allDocs = function (orig) {
-    return orig().then(function (res) {
-      const none = {}
-      return Promise.all(res.rows.map(function (row) {
+      await Promise.all(response.rows.map(async function (row) {
         if (row.doc) {
-          return outgoing(row.doc)
+          row.doc = await outgoing(row.doc)
         }
-        return none
-      })).then(function (resp) {
-        resp.forEach(function (doc, i) {
-          if (doc === none) {
-            return
-          }
-          res.rows[i].doc = doc
-        })
-        return res
-      })
-    })
+      }))
+      return response
+    }
   }
 
-  handlers.bulkGet = function (orig) {
-    return orig().then(function (res) {
-      const none = {}
-      return Promise.all(res.results.map(function (result) {
-        if (result.id && result.docs && Array.isArray(result.docs)) {
-          return {
-            docs: result.docs.map(function (doc) {
-              if (doc.ok) {
-                return { ok: outgoing(doc.ok) }
-              } else {
-                return doc
-              }
-            }),
-            id: result.id
-          }
-        } else {
-          return none
+  handlers.get = async function (orig) {
+    const response = await orig()
+
+    if (!Array.isArray(response)) {
+      return outgoing(response)
+    }
+
+    // open_revs style, it's a list of docs
+    await Promise.all(response.map(async function (row) {
+      if (row.ok) {
+        row.ok = await outgoing(row.ok)
+      }
+    }))
+    return response
+  }
+
+  handlers.bulkDocs = async function (orig, args) {
+    args.docs = await Promise.all(args.docs.map(function (doc) {
+      return incoming(doc)
+    }))
+    return orig()
+  }
+
+  handlers.allDocs = async function (orig) {
+    const response = await orig()
+
+    await Promise.all(response.rows.map(async function (row) {
+      if (row.doc) {
+        row.doc = await outgoing(row.doc)
+      }
+    }))
+    return response
+  }
+
+  handlers.bulkGet = async function (orig) {
+    const res = await orig()
+    const none = {}
+    const results = await Promise.all(res.results.map(function (result) {
+      if (result.id && result.docs && Array.isArray(result.docs)) {
+        return {
+          docs: result.docs.map(function (doc) {
+            if (doc.ok) {
+              return { ok: outgoing(doc.ok) }
+            } else {
+              return doc
+            }
+          }),
+          id: result.id
         }
-      })).then(function (results) {
-        return { results: results }
-      })
-    })
+      } else {
+        return none
+      }
+    }))
+    return { results: results }
   }
   handlers.changes = function (orig) {
-    function modifyChange (change) {
+    async function modifyChange (change) {
       if (change.doc) {
-        return Promise.resolve(outgoing(change.doc)).then(function (doc) {
-          change.doc = doc
-          return change
-        })
+        change.doc = await outgoing(change.doc)
+        return change
       }
-      return Promise.resolve(change)
+      return change
     }
 
-    function modifyChanges (res) {
+    async function modifyChanges (res) {
       if (res.results) {
-        return Promise.all(res.results.map(modifyChange)).then(function (results) {
-          res.results = results
-          return res
-        })
+        res.results = await Promise.all(res.results.map(modifyChange))
+        return res
       }
-      return Promise.resolve(res)
+      return res
     }
 
     const changes = orig()
-    // override some events
-    const origOn = changes.on
+    const { on: origOn, then: origThen } = changes
+
     changes.on = function (event, listener) {
+      const origListener = listener
       if (event === 'change') {
-        return origOn.apply(changes, [event, function (change) {
-          modifyChange(change).then(function (resp) {
-            process.nextTick(function () {
-              listener(resp)
-            })
-          })
-        }])
+        listener = async function (change) {
+          origListener(await modifyChange(change))
+        }
       } else if (event === 'complete') {
-        return origOn.apply(changes, [event, function (res) {
-          modifyChanges(res).then(function (resp) {
-            process.nextTick(function () {
-              listener(resp)
-            })
-          })
-        }])
+        listener = async function (res) {
+          origListener(await modifyChanges(res))
+        }
       }
-      return origOn.apply(changes, [event, listener])
+      return origOn.call(changes, event, listener)
     }
 
-    const origThen = changes.then
     changes.then = function (resolve, reject) {
-      return origThen.apply(changes, [function (res) {
-        return modifyChanges(res).then(resolve, reject)
-      }, reject])
+      return origThen.call(changes, modifyChanges).then(resolve, reject)
     }
+
     return changes
   }
   wrappers.installWrapperMethods(db, handlers)
