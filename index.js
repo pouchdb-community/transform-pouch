@@ -124,16 +124,20 @@ exports.transform = exports.filter = function transform(config) {
       var none = {};
       return utils.Promise.all(res.results.map(function (result) {
         if (result.id && result.docs && Array.isArray(result.docs)) {
-          return {
-            docs: result.docs.map(function(doc) {
-              if (doc.ok) {
-                return {ok: outgoing(doc.ok)};
-              } else {
-                return doc;
-              }
-            }),
-            id: result.id
-          };
+          return utils.Promise.all(result.docs.map(function(doc) {
+            if (doc.ok) {
+              return utils.Promise.resolve(outgoing(doc.ok)).then(function(outdoc) {
+                return {ok: outdoc}
+              });
+            } else {
+              return doc;
+            };
+          })).then(function(docs) {
+            return {
+              docs: docs,
+              id: result.id
+            };
+          });
         } else {
           return none;
         }
