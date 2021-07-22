@@ -43,123 +43,128 @@ function transform (config) {
     return doc
   }
 
-  const handlers = {}
-
-  if (db.type() === 'http') {
-    // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
-    // which the adapter does.
-    // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
-    handlers.put = async function (orig, args) {
-      args.doc = await incoming(args.doc)
-      return orig()
-    }
-    handlers.query = async function (orig) {
+  const handlers = {
+    async get (orig) {
       const response = await orig()
 
-      await Promise.all(response.rows.map(async function (row) {
+      if (!Array.isArray(response)) {
+        return outgoing(response)
+      }
+
+      // open_revs style, it's a list of docs
+      await Promise.all(response.map(async (row) => {
+        if (row.ok) {
+          row.ok = await outgoing(row.ok)
+        }
+      }))
+      return response
+    },
+
+    async bulkDocs (orig, args) {
+      args.docs = await Promise.all(args.docs.map((doc) => {
+        return incoming(doc)
+      }))
+      return orig()
+    },
+
+    async allDocs (orig) {
+      const response = await orig()
+
+      await Promise.all(response.rows.map(async (row) => {
         if (row.doc) {
           row.doc = await outgoing(row.doc)
         }
       }))
       return response
-    }
-  }
+    },
 
-  handlers.get = async function (orig) {
-    const response = await orig()
-
-    if (!Array.isArray(response)) {
-      return outgoing(response)
-    }
-
-    // open_revs style, it's a list of docs
-    await Promise.all(response.map(async function (row) {
-      if (row.ok) {
-        row.ok = await outgoing(row.ok)
-      }
-    }))
-    return response
-  }
-
-  handlers.bulkDocs = async function (orig, args) {
-    args.docs = await Promise.all(args.docs.map(function (doc) {
-      return incoming(doc)
-    }))
-    return orig()
-  }
-
-  handlers.allDocs = async function (orig) {
-    const response = await orig()
-
-    await Promise.all(response.rows.map(async function (row) {
-      if (row.doc) {
-        row.doc = await outgoing(row.doc)
-      }
-    }))
-    return response
-  }
-
-  handlers.bulkGet = async function (orig) {
-    const res = await orig()
-    const none = {}
-    const results = await Promise.all(res.results.map(async (result) => {
-      if (result.id && result.docs && Array.isArray(result.docs)) {
-        return {
-          docs: await Promise.all(result.docs.map(async (doc) => {
-            if (doc.ok) {
-              return { ok: await outgoing(doc.ok) }
-            } else {
-              return doc
-            }
-          })),
-          id: result.id
+    async bulkGet (orig) {
+      const res = await orig()
+      const none = {}
+      const results = await Promise.all(res.results.map(async (result) => {
+        if (result.id && result.docs && Array.isArray(result.docs)) {
+          return {
+            docs: await Promise.all(result.docs.map(async (doc) => {
+              if (doc.ok) {
+                return { ok: await outgoing(doc.ok) }
+              } else {
+                return doc
+              }
+            })),
+            id: result.id
+          }
+        } else {
+          return none
         }
-      } else {
-        return none
-      }
-    }))
-    return { results: results }
-  }
-  handlers.changes = function (orig) {
-    async function modifyChange (change) {
-      if (change.doc) {
-        change.doc = await outgoing(change.doc)
+      }))
+      return { results: results }
+    },
+
+    changes (orig) {
+      async function modifyChange (change) {
+        if (change.doc) {
+          change.doc = await outgoing(change.doc)
+          return change
+        }
         return change
       }
-      return change
-    }
 
-    async function modifyChanges (res) {
-      if (res.results) {
-        res.results = await Promise.all(res.results.map(modifyChange))
+      async function modifyChanges (res) {
+        if (res.results) {
+          res.results = await Promise.all(res.results.map(modifyChange))
+          return res
+        }
         return res
       }
-      return res
-    }
 
-    const changes = orig()
-    const { on: origOn, then: origThen } = changes
+      const changes = orig()
+      const { on: origOn, then: origThen } = changes
 
-    changes.on = function (event, listener) {
-      const origListener = listener
-      if (event === 'change') {
-        listener = async function (change) {
-          origListener(await modifyChange(change))
+      return Object.assign(changes, {
+        on (event, listener) {
+          const origListener = listener
+          if (event === 'change') {
+            listener = async (change) => {
+              origListener(await modifyChange(change))
+            }
+          } else if (event === 'complete') {
+            listener = async (res) => {
+              origListener(await modifyChanges(res))
+            }
+          }
+          return origOn.call(changes, event, listener)
+        },
+
+        then (resolve, reject) {
+          return origThen.call(changes, modifyChanges).then(resolve, reject)
         }
-      } else if (event === 'complete') {
-        listener = async function (res) {
-          origListener(await modifyChanges(res))
-        }
-      }
-      return origOn.call(changes, event, listener)
+      })
     }
-
-    changes.then = function (resolve, reject) {
-      return origThen.call(changes, modifyChanges).then(resolve, reject)
-    }
-
-    return changes
   }
+
+  if (db.type() === 'http') {
+    Object.assign(handlers, {
+      // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
+      // which the adapter does.
+      // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
+      async put (orig, args) {
+        args.doc = await incoming(args.doc)
+        return orig()
+      },
+
+      async query (orig) {
+        const response = await orig()
+
+        await Promise.all(response.rows.map(async (row) => {
+          if (row.doc) {
+            row.doc = await outgoing(row.doc)
+          }
+        }))
+        return response
+      }
+    })
+  }
+
   wrappers.installWrapperMethods(db, handlers)
 }
 
