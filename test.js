@@ -301,7 +301,8 @@ function tests (dbName, dbType) {
     it('transforms on bulkGet()', async function () {
       db.transform({
         outgoing: async function (doc) {
-          return { ...doc, foo: 'baz' }
+          doc.foo = 'baz'
+          return doc
         }
       })
 

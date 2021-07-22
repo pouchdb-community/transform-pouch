@@ -32,9 +32,10 @@
     "coverage": "nyc npm test"
   },
   "dependencies": {
-    "pouchdb-wrappers": "github:neighbourhoodie/pouchdb-wrappers#mergemaster"
+    "pouchdb-wrappers": "file:../pouchdb-wrappers"
   },
   "devDependencies": {
+    "babelify": "^10.0.0",
     "dependency-check": "^4.1.0",
     "envify": "^4.1.0",
     "mocha": "^8.3.2",

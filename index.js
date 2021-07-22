@@ -44,8 +44,8 @@ function transform (config) {
   }
 
   const handlers = {
-    async get (orig) {
-      const response = await orig()
+    async get (orig, ...args) {
+      const response = await orig(...args)
 
       if (!Array.isArray(response)) {
         return outgoing(response)
@@ -60,15 +60,31 @@ function transform (config) {
       return response
     },
 
-    async bulkDocs (orig, args) {
-      args.docs = await Promise.all(args.docs.map((doc) => {
-        return incoming(doc)
-      }))
-      return orig()
+    async bulkDocs (orig, docs, opts, callback) {
+      if (!callback && typeof opts === 'function') {
+        callback = opts
+        opts = {}
+      }
+      if (docs.docs) {
+        const { docs: docsArg, ...optsArg } = docs
+        docs = docsArg
+        opts = optsArg
+      }
+      try {
+        docs = await Promise.all(docs.map(incoming))
+        if (callback) {
+          return orig(docs, opts, callback)
+        } else {
+          return orig(docs, opts)
+        }
+      } catch (error) {
+        if (callback) { callback(error) }
+        return Promise.reject(error)
+      }
     },
 
-    async allDocs (orig) {
-      const response = await orig()
+    async allDocs (orig, ...args) {
+      const response = await orig(...args)
 
       await Promise.all(response.rows.map(async (row) => {
         if (row.doc) {
@@ -78,8 +94,8 @@ function transform (config) {
       return response
     },
 
-    async bulkGet (orig) {
-      const res = await orig()
+    async bulkGet (orig, ...args) {
+      const res = await orig(...args)
       const none = {}
       const results = await Promise.all(res.results.map(async (result) => {
         if (result.id && result.docs && Array.isArray(result.docs)) {
@@ -97,10 +113,10 @@ function transform (config) {
           return none
         }
       }))
-      return { results: results }
+      return { results }
     },
 
-    changes (orig) {
+    changes (orig, ...args) {
       async function modifyChange (change) {
         if (change.doc) {
           change.doc = await outgoing(change.doc)
@@ -117,7 +133,7 @@ function transform (config) {
         return res
       }
 
-      const changes = orig()
+      const changes = orig(...args)
       const { on: origOn, then: origThen } = changes
 
       return Object.assign(changes, {
@@ -147,13 +163,13 @@ function transform (config) {
       // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
       // which the adapter does.
       // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
-      async put (orig, args) {
-        args.doc = await incoming(args.doc)
-        return orig()
+      async put (orig, doc, ...args) {
+        doc = await incoming(doc)
+        return orig(doc, ...args)
       },
 
-      async query (orig) {
-        const response = await orig()
+      async query (orig, ...args) {
+        const response = await orig(...args)
 
         await Promise.all(response.rows.map(async (row) => {
           if (row.doc) {
@@ -165,7 +181,7 @@ function transform (config) {
     })
   }
 
-  wrappers.installWrapperMethods(db, handlers)
+  wrappers.install(db, handlers)
 }
 
 /* istanbul ignore next */
