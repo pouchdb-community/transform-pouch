@@ -44,209 +44,191 @@ function tests (dbName, dbType) {
     })
 
     it('transforms on PUT, with a promise', async function () {
-      const id = 'foo'
-      const val = 'baz'
       db.transform({
-        incoming: function (doc) {
-          doc.foo = val
-          return doc
-        }
-      })
-      await db.put({ _id: id })
-      const doc = await db.get(id)
-      assert.equal(doc._id, id)
-      assert.equal(doc.foo, val)
-    })
-
-    it('transforms on POST', function () {
-      db.transform({
-        incoming: function (doc) {
+        incoming: async function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.post({}).then(function (res) {
-        return db.get(res.id)
-      }).then(function (doc) {
-        assert.equal(typeof doc._id, 'string')
-        assert.equal(doc.foo, 'baz')
-      })
+
+      await db.put({ _id: 'foo' })
+      const doc = await db.get('foo')
+
+      assert.equal(doc._id, 'foo')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('transforms on POST, with a promise', function () {
-      db.transform({
-        incoming: function (doc) {
-          doc.foo = 'baz'
-          return Promise.resolve(doc)
-        }
-      })
-      return db.post({}).then(function (res) {
-        return db.get(res.id)
-      }).then(function (doc) {
-        assert.equal(typeof doc._id, 'string')
-        assert.equal(doc.foo, 'baz')
-      })
-    })
-
-    it('transforms on GET', function () {
-      db.transform({
-        outgoing: function (doc) {
-          doc.foo = 'baz'
-          return doc
-        }
-      })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, 'foo')
-        assert.equal(doc.foo, 'baz')
-      })
-    })
-
-    it('transforms on GET, with a promise', function () {
-      db.transform({
-        outgoing: function (doc) {
-          doc.foo = 'baz'
-          return Promise.resolve(doc)
-        }
-      })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, 'foo')
-        assert.equal(doc.foo, 'baz')
-      })
-    })
-
-    it('skips local docs', function () {
-      db.transform({
-        outgoing: function (doc) {
-          doc.foo = 'baz'
-          return doc
-        }
-      })
-      return db.put({ _id: '_local/foo' }).then(function () {
-        return db.get('_local/foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, '_local/foo')
-        assert(!('foo' in doc))
-      })
-    })
-
-    it('skips local docs, incoming', function () {
+    it('transforms on POST', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.put({ _id: '_local/foo' }).then(function () {
-        return db.get('_local/foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, '_local/foo')
-        assert(!('foo' in doc))
-      })
+      const res = await db.post({})
+      const doc = await db.get(res.id)
+      assert.equal(typeof doc._id, 'string')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('skips local docs, post', function () {
+    it('transforms on POST, with a promise', async function () {
+      db.transform({
+        incoming: async function (doc) {
+          doc.foo = 'baz'
+          return doc
+        }
+      })
+      const res = await db.post({})
+      const doc = await db.get(res.id)
+      assert.equal(typeof doc._id, 'string')
+      assert.equal(doc.foo, 'baz')
+    })
+
+    it('transforms on GET', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.post({ _id: '_local/foo' }).then(function () {
-        return db.get('_local/foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, '_local/foo')
-        assert(!('foo' in doc))
-      })
+      await db.put({ _id: 'foo' })
+      const doc = await db.get('foo')
+      assert.equal(doc._id, 'foo')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('skips local docs, bulkDocs', function () {
+    it('transforms on GET, with a promise', async function () {
+      db.transform({
+        outgoing: async function (doc) {
+          doc.foo = 'baz'
+          return doc
+        }
+      })
+      await db.put({ _id: 'foo' })
+      const doc = await db.get('foo')
+      assert.equal(doc._id, 'foo')
+      assert.equal(doc.foo, 'baz')
+    })
+
+    it('skips local docs', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.bulkDocs([{ _id: '_local/foo' }]).then(function () {
-        return db.get('_local/foo')
-      }).then(function (doc) {
-        assert.equal(doc._id, '_local/foo')
-        assert(!('foo' in doc))
-      })
+      await db.put({ _id: '_local/foo' })
+      const doc = await db.get('_local/foo')
+      assert.equal(doc._id, '_local/foo')
+      assert(!('foo' in doc))
     })
 
-    it('skips deleted docs', function () {
-      const doc = { _id: 'foo', foo: {} }
-      return db.put(doc).then(function (res) {
-        doc._rev = res.rev
-        return db.get('foo')
-      }).then(function (doc) {
-        let transformCalledOnDelete = false
-        db.transform({
-          incoming: function (doc) {
-            transformCalledOnDelete = true
-            return doc
-          }
-        })
-
-        return db.remove(doc).then(function () {
-          assert.equal(transformCalledOnDelete, false)
-        })
+    it('skips local docs, incoming', async function () {
+      db.transform({
+        incoming: function (doc) {
+          doc.foo = 'baz'
+          return doc
+        }
       })
+      await db.put({ _id: '_local/foo' })
+      const doc = await db.get('_local/foo')
+      assert.equal(doc._id, '_local/foo')
+      assert(!('foo' in doc))
     })
 
-    it('transforms deleted docs with custom properties', function () {
-      const doc = { _id: 'foo', foo: {} }
-      return db.put(doc).then(function (res) {
-        doc._rev = res.rev
-        return db.get('foo')
-      }).then(function (doc) {
-        let transformCalledOnDelete = false
-        db.transform({
-          incoming: function (doc) {
-            transformCalledOnDelete = true
-            return doc
-          }
-        })
-
-        doc.foo = 'baz'
-        doc._deleted = true
-        return db.put(doc).then(function () {
-          assert.equal(transformCalledOnDelete, true)
-        })
+    it('skips local docs, post', async function () {
+      db.transform({
+        outgoing: function (doc) {
+          doc.foo = 'baz'
+          return doc
+        }
       })
+      await db.post({ _id: '_local/foo' })
+      const doc = await db.get('_local/foo')
+      assert.equal(doc._id, '_local/foo')
+      assert(!('foo' in doc))
     })
 
-    it('handles sync errors', function () {
+    it('skips local docs, bulkDocs', async function () {
+      db.transform({
+        outgoing: function (doc) {
+          doc.foo = 'baz'
+          return doc
+        }
+      })
+      await db.bulkDocs([{ _id: '_local/foo' }])
+      const doc = await db.get('_local/foo')
+      assert.equal(doc._id, '_local/foo')
+      assert(!('foo' in doc))
+    })
+
+    it('skips deleted docs', async function () {
+      await db.put({ _id: 'foo', foo: {} })
+      const doc = await db.get('foo')
+      let transformCalledOnDelete = false
+
+      db.transform({
+        incoming: function (doc) {
+          transformCalledOnDelete = true
+          return doc
+        }
+      })
+
+      await db.remove(doc)
+      assert.equal(transformCalledOnDelete, false)
+    })
+
+    it('transforms deleted docs with custom properties', async function () {
+      await db.put({ _id: 'foo', foo: {} })
+      const doc = await db.get('foo')
+      let transformCalledOnDelete = false
+
+      db.transform({
+        incoming: function (doc) {
+          transformCalledOnDelete = true
+          return doc
+        }
+      })
+
+      doc.foo = 'baz'
+      doc._deleted = true
+      await db.put(doc)
+      assert.equal(transformCalledOnDelete, true)
+    })
+
+    it('handles sync errors', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo.baz = 'baz'
           return doc
         }
       })
-      const doc = { _id: 'foo' }
-      return db.put(doc).then(function (res) {
-        assert.equal(res, undefined)
-      }).catch(function (err) {
-        assert.notEqual(err, undefined)
-      })
+
+      let res, err
+      try {
+        res = await db.put({ _id: 'foo' })
+      } catch (error) {
+        err = error
+      }
+      assert.equal(res, undefined)
+      assert.notEqual(err, undefined)
     })
 
-    it('handles async errors', function () {
+    it('handles async errors', async function () {
       db.transform({
         incoming: function () {
           return Promise.reject(new Error('flunking you'))
         }
       })
-      const doc = { _id: 'foo' }
-      return db.put(doc).then(function (res) {
-        assert.equal(res, undefined)
-      }).catch(function (err) {
-        assert.notEqual(err, undefined)
-      })
+
+      let res, err
+      try {
+        res = await db.put({ _id: 'foo' })
+      } catch (error) {
+        err = error
+      }
+      assert.equal(res, undefined)
+      assert.notEqual(err, undefined)
     })
 
     it('handles cancel', function () {
@@ -255,91 +237,82 @@ function tests (dbName, dbType) {
       return syncHandler.cancel()
     })
 
-    it('transforms on GET with options', function () {
+    it('transforms on GET with options', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo', {})
-      }).then(function (doc) {
-        assert.equal(doc._id, 'foo')
-        assert.equal(doc.foo, 'baz')
-      })
+      await db.put({ _id: 'foo' })
+      const doc = await db.get('foo', {})
+      assert.equal(doc._id, 'foo')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('transforms on GET with missing open_revs', function () {
+    it('transforms on GET with missing open_revs', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('foo', { revs: true, open_revs: ['1-DNE'] })
-      }).then(function (docs) {
-        assert.equal(docs.length, 1)
-        assert.equal(docs[0].missing, '1-DNE')
-      })
+      await db.put({ _id: 'foo' })
+      const docs = await db.get('foo', { revs: true, open_revs: ['1-DNE'] })
+      assert.equal(docs.length, 1)
+      assert.equal(docs[0].missing, '1-DNE')
     })
 
-    it('transforms on GET with missing and non-missing open_revs', function () {
+    it('transforms on GET with missing and non-missing open_revs', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      let rev
-      return db.put({ _id: 'foo' }).then(function (res) {
-        rev = res.rev
-        return db.get('foo', { revs: true, open_revs: ['1-DNE', rev] })
-      }).then(function (docs) {
-        assert.equal(docs.length, 2)
-        const okRes = docs[0].ok ? docs[0] : docs[1]
-        const missingRes = docs[0].ok ? docs[1] : docs[0]
-        assert.equal(missingRes.missing, '1-DNE')
-        assert.equal(okRes.ok._rev, rev)
-      })
+      const res = await db.put({ _id: 'foo' })
+      const rev = res.rev
+      const docs = await db.get('foo', { revs: true, open_revs: ['1-DNE', rev] })
+      assert.equal(docs.length, 2)
+      const okRes = docs[0].ok ? docs[0] : docs[1]
+      const missingRes = docs[0].ok ? docs[1] : docs[0]
+      assert.equal(missingRes.missing, '1-DNE')
+      assert.equal(okRes.ok._rev, rev)
     })
 
-    it('transforms on GET, not found', function () {
+    it('transforms on GET, not found', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
           return doc
         }
       })
-      return db.put({ _id: 'foo' }).then(function () {
-        return db.get('quux')
-      }).then(function (doc) {
-        assert.equal(doc, undefined)
-      }).catch(function (err) {
-        assert.notEqual(err, undefined)
-      })
+      await db.put({ _id: 'foo' })
+      let doc, err
+      try {
+        doc = await db.get('quux')
+      } catch (error) {
+        err = error
+      }
+      assert.equal(doc, undefined)
+      assert.notEqual(err, undefined)
     })
 
-    it('transforms on bulk_docs', function () {
+    it('transforms on bulk_docs', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
           return doc
         }
       })
-      return db.bulkDocs([{ _id: 'toto' }, { _id: 'lala' }]).then(function (res) {
-        return db.get(res[0].id).then(function (doc) {
-          assert.equal(doc.foo, 'toto_baz')
-        }).then(function () {
-          return db.get(res[1].id)
-        }).then(function (doc) {
-          assert.equal(doc.foo, 'lala_baz')
-        })
-      })
+      const res = await db.bulkDocs([{ _id: 'toto' }, { _id: 'lala' }])
+      const doc0 = await db.get(res[0].id)
+      assert.equal(doc0.foo, 'toto_baz')
+      const doc1 = await db.get(res[1].id)
+      assert.equal(doc1.foo, 'lala_baz')
     })
 
-    it('transforms on bulk_docs, new_edits=false 1', function () {
+    it('transforms on bulk_docs, new_edits=false 1', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
@@ -414,26 +387,24 @@ function tests (dbName, dbType) {
           }
         }
       ]
-      return db.bulkDocs({ docs: docsA, new_edits: false }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
-      }).then(function () {
-        return db.bulkDocs({ docs: docsB, new_edits: false })
-      }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
-      }).then(function () {
-        return db.bulkDocs({ docs: docsC, new_edits: false })
-      }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
+
+      let results = await db.bulkDocs({ docs: docsA, new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
+      })
+
+      results = await db.bulkDocs({ docs: docsB, new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
+      })
+
+      results = await db.bulkDocs({ docs: docsC, new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
       })
     })
 
-    it('transforms on bulk_docs, new_edits=false 2', function () {
+    it('transforms on bulk_docs, new_edits=false 2', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
@@ -508,92 +479,80 @@ function tests (dbName, dbType) {
           }
         }
       ]
-      return db.bulkDocs(docsA, { new_edits: false }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
-      }).then(function () {
-        return db.bulkDocs(docsB, { new_edits: false })
-      }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
-      }).then(function () {
-        return db.bulkDocs(docsC, { new_edits: false })
-      }).then(function (results) {
-        results.forEach(function (result) {
-          assert(!('error' in result), 'no doc update coflict')
-        })
+
+      let results = await db.bulkDocs(docsA, { new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
+      })
+
+      results = await db.bulkDocs(docsB, { new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
+      })
+
+      results = await db.bulkDocs(docsC, { new_edits: false })
+      results.forEach(function (result) {
+        assert(!('error' in result), 'no doc update coflict')
       })
     })
 
-    it('transforms on bulk_docs, object style', function () {
+    it('transforms on bulk_docs, object style', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
           return doc
         }
       })
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function (res) {
-        return db.get(res[0].id).then(function (doc) {
-          assert.equal(doc.foo, 'toto_baz')
-        }).then(function () {
-          return db.get(res[1].id)
-        }).then(function (doc) {
-          assert.equal(doc.foo, 'lala_baz')
-        })
-      })
+      const res = await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] })
+      let doc = await db.get(res[0].id)
+      assert.equal(doc.foo, 'toto_baz')
+      doc = await db.get(res[1].id)
+      assert.equal(doc.foo, 'lala_baz')
     })
 
-    it('transforms on all_docs, incoming', function () {
+    it('transforms on all_docs, incoming', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
           return doc
         }
       })
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
-        return db.allDocs({ include_docs: true }).then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert.equal(res.rows[0].doc.foo, 'lala_baz')
-          assert.equal(res.rows[1].doc.foo, 'toto_baz')
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] })
+      const res = await db.allDocs({ include_docs: true })
+      assert.equal(res.rows.length, 2)
+      assert.equal(res.rows[0].doc.foo, 'lala_baz')
+      assert.equal(res.rows[1].doc.foo, 'toto_baz')
     })
 
-    it('transforms on all_docs, outgoing', function () {
+    it('transforms on all_docs, outgoing', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz'
           return doc
         }
       })
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
-        return db.allDocs({ include_docs: true }).then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert.equal(res.rows[0].doc.foo, 'lala_baz')
-          assert.equal(res.rows[1].doc.foo, 'toto_baz')
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] })
+      const res = await db.allDocs({ include_docs: true })
+      assert.equal(res.rows.length, 2)
+      assert.equal(res.rows[0].doc.foo, 'lala_baz')
+      assert.equal(res.rows[1].doc.foo, 'toto_baz')
     })
 
-    it('transforms on all_docs no opts, outgoing', function () {
+    it('transforms on all_docs no opts, outgoing', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz'
           return doc
         }
       })
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] }).then(function () {
-        return db.allDocs().then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert(!('doc' in res.rows[0]))
-          assert(!('doc' in res.rows[1]))
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }] })
+      const res = await db.allDocs()
+      assert.equal(res.rows.length, 2)
+      assert(!('doc' in res.rows[0]))
+      assert(!('doc' in res.rows[1]))
     })
 
-    it('transforms on query, incoming', function () {
+    it('transforms on query, incoming', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = doc._id + '_baz'
@@ -612,16 +571,14 @@ function tests (dbName, dbType) {
         }
       }
 
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
-        return db.query('index', { include_docs: true }).then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert.equal(res.rows[0].doc.foo, 'lala_baz')
-          assert.equal(res.rows[1].doc.foo, 'toto_baz')
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] })
+      const res = await db.query('index', { include_docs: true })
+      assert.equal(res.rows.length, 2)
+      assert.equal(res.rows[0].doc.foo, 'lala_baz')
+      assert.equal(res.rows[1].doc.foo, 'toto_baz')
     })
 
-    it('transforms on query, outgoing', function () {
+    it('transforms on query, outgoing', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz'
@@ -638,16 +595,14 @@ function tests (dbName, dbType) {
           }
         }
       }
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
-        return db.query('index', { include_docs: true }).then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert.equal(res.rows[0].doc.foo, 'lala_baz')
-          assert.equal(res.rows[1].doc.foo, 'toto_baz')
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] })
+      const res = await db.query('index', { include_docs: true })
+      assert.equal(res.rows.length, 2)
+      assert.equal(res.rows[0].doc.foo, 'lala_baz')
+      assert.equal(res.rows[1].doc.foo, 'toto_baz')
     })
 
-    it('transforms on query no opts, outgoing', function () {
+    it('transforms on query no opts, outgoing', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = doc._id + '_baz'
@@ -664,16 +619,14 @@ function tests (dbName, dbType) {
           }
         }
       }
-      return db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] }).then(function () {
-        return db.query('index').then(function (res) {
-          assert.equal(res.rows.length, 2)
-          assert(!('doc' in res.rows[0]))
-          assert(!('doc' in res.rows[1]))
-        })
-      })
+      await db.bulkDocs({ docs: [{ _id: 'toto' }, { _id: 'lala' }, ddoc] })
+      const res = await db.query('index')
+      assert.equal(res.rows.length, 2)
+      assert(!('doc' in res.rows[0]))
+      assert(!('doc' in res.rows[1]))
     })
 
-    it('transforms ingoing and outgoing', function () {
+    it('transforms ingoing and outgoing', async function () {
       db.transform({
         ingoing: function (doc) {
           doc.foo = doc.foo.toUpperCase()
@@ -684,11 +637,9 @@ function tests (dbName, dbType) {
           return doc
         }
       })
-      return db.put({ _id: 'doc', foo: 'bar' }).then(function () {
-        return db.get('doc')
-      }).then(function (doc) {
-        assert.equal(doc.foo, 'bar')
-      })
+      await db.put({ _id: 'doc', foo: 'bar' })
+      const doc = await db.get('doc')
+      assert.equal(doc.foo, 'bar')
     })
   })
 
@@ -772,37 +723,30 @@ function tests (dbName, dbType) {
       assert.equal(doc.secret, encrypt(secret))
     })
 
-    it('test encryption/decryption with posts', function () {
+    it('test encryption/decryption with posts', async function () {
       transform(db)
-      let id
-      return db.post({ secret: 'my super secret text!' }).then(function (res) {
-        id = res.id
-        return db.get(res.id)
-      }).then(function (doc) {
-        assert.equal(doc.secret, 'my super secret text!')
-        return new PouchDB(dbName).get(id)
-      }).then(function (doc) {
-        assert.equal(doc.secret, encrypt('my super secret text!'))
-      })
+      const res = await db.post({ secret: 'my super secret text!' })
+      const id = res.id
+      let doc = await db.get(id)
+      assert.equal(doc.secret, 'my super secret text!')
+      doc = await new PouchDB(dbName).get(id)
+      assert.equal(doc.secret, encrypt('my super secret text!'))
     })
 
-    it('test encryption/decryption with bulkdocs/alldocs', function () {
+    it('test encryption/decryption with bulkdocs/alldocs', async function () {
       const id = 'doc'
       const secret = 'my super secret text!'
       transform(db)
-      return db.bulkDocs([{ _id: id, secret }]).then(function () {
-        return db.allDocs({ keys: [id], include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.rows.length, 1)
-        assert.equal(res.rows[0].doc.secret, secret)
-        return new PouchDB(dbName).allDocs({ keys: [id], include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.rows.length, 1)
-        assert.equal(res.rows[0].doc.secret, encrypt(secret))
-      })
+      await db.bulkDocs([{ _id: id, secret }])
+      let res = await db.allDocs({ keys: [id], include_docs: true })
+      assert.equal(res.rows.length, 1)
+      assert.equal(res.rows[0].doc.secret, secret)
+      res = await new PouchDB(dbName).allDocs({ keys: [id], include_docs: true })
+      assert.equal(res.rows.length, 1)
+      assert.equal(res.rows[0].doc.secret, encrypt(secret))
     })
 
-    it('test encryption/decryption with bulkdocs/query', function () {
+    it('test encryption/decryption with bulkdocs/query', async function () {
       transform(db)
 
       const ddoc = {
@@ -816,19 +760,16 @@ function tests (dbName, dbType) {
         }
       }
 
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }, ddoc]).then(function () {
-        return db.query('index', { keys: ['doc'], include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.rows.length, 1)
-        assert.equal(res.rows[0].doc.secret, 'my super secret text!')
-        return new PouchDB(dbName).query('index', { keys: ['doc'], include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.rows.length, 1)
-        assert.equal(res.rows[0].doc.secret, encrypt('my super secret text!'))
-      })
+      await db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }, ddoc])
+      let res = await db.query('index', { keys: ['doc'], include_docs: true })
+      assert.equal(res.rows.length, 1)
+      assert.equal(res.rows[0].doc.secret, 'my super secret text!')
+      res = await new PouchDB(dbName).query('index', { keys: ['doc'], include_docs: true })
+      assert.equal(res.rows.length, 1)
+      assert.equal(res.rows[0].doc.secret, encrypt('my super secret text!'))
     })
 
-    it('test encryption/decryption with bulkdocs/changes complete', function () {
+    it('test encryption/decryption with bulkdocs/changes complete', async function () {
       transform(db)
 
       function changesCompletePromise (db, opts) {
@@ -837,19 +778,16 @@ function tests (dbName, dbType) {
         })
       }
 
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
-        return changesCompletePromise(db, { include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.results.length, 1)
-        assert.equal(res.results[0].doc.secret, 'my super secret text!')
-        return changesCompletePromise(new PouchDB(dbName), { include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.results.length, 1)
-        assert.equal(res.results[0].doc.secret, encrypt('my super secret text!'))
-      })
+      await db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }])
+      let res = await changesCompletePromise(db, { include_docs: true })
+      assert.equal(res.results.length, 1)
+      assert.equal(res.results[0].doc.secret, 'my super secret text!')
+      res = await changesCompletePromise(new PouchDB(dbName), { include_docs: true })
+      assert.equal(res.results.length, 1)
+      assert.equal(res.results[0].doc.secret, encrypt('my super secret text!'))
     })
 
-    it('test encryption/decryption with bulkdocs/changes single change', function () {
+    it('test encryption/decryption with bulkdocs/changes single change', async function () {
       transform(db)
 
       function changesCompletePromise (db, opts) {
@@ -858,14 +796,11 @@ function tests (dbName, dbType) {
         })
       }
 
-      return db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }]).then(function () {
-        return changesCompletePromise(db, { include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.doc.secret, 'my super secret text!')
-        return changesCompletePromise(new PouchDB(dbName), { include_docs: true })
-      }).then(function (res) {
-        assert.equal(res.doc.secret, encrypt('my super secret text!'))
-      })
+      await db.bulkDocs([{ _id: 'doc', secret: 'my super secret text!' }])
+      let res = await changesCompletePromise(db, { include_docs: true })
+      assert.equal(res.doc.secret, 'my super secret text!')
+      res = await changesCompletePromise(new PouchDB(dbName), { include_docs: true })
+      assert.equal(res.doc.secret, encrypt('my super secret text!'))
     })
 
     it('test encryption/decryption with bulkdocs/changes complete, promise style', async function () {
@@ -900,11 +835,11 @@ function tests (dbName, dbType) {
       assert(!('doc' in res.results[0]))
     })
 
-    it('makes sure that the .changes wrapper returns the value (#43)', function () {
+    it('makes sure that the .changes wrapper returns the value (#43)', async function () {
       db.transform({})
       const documentId = 'some-id'
 
-      return db.put({
+      await db.put({
         _id: '_design/some_view',
         views: {
           some_view: {
@@ -915,21 +850,15 @@ function tests (dbName, dbType) {
           }
         }
       })
-        .then(function () {
-          return db.put({ _id: documentId, value: 5 })
-        })
-        .then(function () {
-          return db.query('some_view')
-        })
-        .then(function (response) {
-          assert.equal(response.rows.length, 1)
-        })
+      await db.put({ _id: documentId, value: 5 })
+      const response = await db.query('some_view')
+      assert.equal(response.rows.length, 1)
     })
 
     // only works locally, since the remote Couch can't see the
     // unencrypted field
     if (dbType === 'local') {
-      it('test encryption/decryption with map/reduce', function () {
+      it('test encryption/decryption with map/reduce', async function () {
         transform(db)
         const id = 'doc'
         const secret = 'my super secret text!'
@@ -938,16 +867,13 @@ function tests (dbName, dbType) {
             emit(doc.secret)
           }
         }
-        return db.put({ _id: id, secret }).then(function () {
-          return db.query(mapFun)
-        }).then(function (res) {
-          assert.equal(res.rows.length, 1)
-          assert.equal(res.rows[0].key, secret)
-          return new PouchDB(dbName).query(mapFun)
-        }).then(function (res) {
-          assert.equal(res.rows.length, 1)
-          assert.equal(res.rows[0].key, encrypt(secret))
-        })
+        await db.put({ _id: id, secret })
+        let res = await db.query(mapFun)
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].key, secret)
+        res = await new PouchDB(dbName).query(mapFun)
+        assert.equal(res.rows.length, 1)
+        assert.equal(res.rows[0].key, encrypt(secret))
       })
     }
   })
@@ -977,13 +903,12 @@ function tests (dbName, dbType) {
       remote = new PouchDB(dbName + '_other')
     })
 
-    afterEach(function () {
-      return db.destroy().then(function () {
-        return remote.destroy()
-      })
+    afterEach(async function () {
+      await db.destroy()
+      await remote.destroy()
     })
 
-    it('test replication transforms incoming', function () {
+    it('test replication transforms incoming', async function () {
       db.transform({
         incoming: function (doc) {
           doc.foo = 'baz'
@@ -991,18 +916,17 @@ function tests (dbName, dbType) {
         }
       })
 
-      return remote.put({ _id: 'doc' }).then(function () {
-        return new Promise(function (resolve, reject) {
-          remote.replicate.to(db).on('complete', resolve).on('error', reject)
-        })
-      }).then(function () {
-        return db.get('doc')
-      }).then(function (doc) {
-        assert.equal(doc.foo, 'baz')
+      await remote.put({ _id: 'doc' })
+
+      await new Promise(function (resolve, reject) {
+        remote.replicate.to(db).on('complete', resolve).on('error', reject)
       })
+
+      const doc = await db.get('doc')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('test replication transforms outgoing', function () {
+    it('test replication transforms outgoing', async function () {
       db.transform({
         outgoing: function (doc) {
           doc.foo = 'baz'
@@ -1010,18 +934,17 @@ function tests (dbName, dbType) {
         }
       })
 
-      return db.put({ _id: 'doc' }).then(function () {
-        return new Promise(function (resolve, reject) {
-          db.replicate.to(remote).on('complete', resolve).on('error', reject)
-        })
-      }).then(function () {
-        return remote.get('doc')
-      }).then(function (doc) {
-        assert.equal(doc.foo, 'baz')
+      await db.put({ _id: 'doc' })
+
+      await new Promise(function (resolve, reject) {
+        db.replicate.to(remote).on('complete', resolve).on('error', reject)
       })
+
+      const doc = await remote.get('doc')
+      assert.equal(doc.foo, 'baz')
     })
 
-    it('test live replication transforms', function () {
+    it('test live replication transforms', async function () {
       // We need to wait until the "incoming" change has happened.
       // We'll use a re-assignable deferred object so we can wait multiple times
       let d
@@ -1046,52 +969,38 @@ function tests (dbName, dbType) {
       })
 
       // Ongoing live replication
-      const syncHandler = remote.sync(db, {
-        live: true
-      })
+      const syncHandler = remote.sync(db, { live: true })
 
-      const setupPromise = new Promise(function (resolve) {
-        // Wait to give replication a chance
-        setTimeout(resolve, 500)
-      })
+      // Wait to give replication a chance
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      // The actual test
-      const result = setupPromise.then(function () {
-        // Reset the incoming listener
-        d = defer()
-        return remote.put({ _id: 'doc' })
-      }).then(function () {
-        // Wait for the incoming listener - everything's updated
-        return d.promise
-      }).then(function () {
-        return db.get('doc')
-      }).then(function (doc) {
-        assert('boo' in doc)
-        assert('foo' in doc)
-        assert.equal(doc.foo, 'baz')
-        return remote.get('doc')
-      }).then(function (doc) {
-        // Reset the incoming listener
-        d = defer()
-        return remote.put({ _id: 'doc', _rev: doc._rev, moo: 'bar' })
-      }).then(function () {
-        // Wait for the incoming listener - everything's updated
-        return d.promise
-      }).then(function () {
-        return db.get('doc')
-      }).then(function (doc) {
-        assert('moo' in doc)
-        assert('foo' in doc)
-        assert('boo' in doc)
-        assert.equal(doc.foo, 'baz')
-        assert.equal(doc.moo, 'bar')
-        assert.equal(doc.boo, 'lal')
-      })
+      // Reset the incoming listener
+      d = defer()
+      await remote.put({ _id: 'doc' })
+      // Wait for the incoming listener - everything's updated
+      await d.promise
 
-      result.then(function () {
-        syncHandler.cancel()
-      })
-      return result
+      let doc = await db.get('doc')
+      assert('boo' in doc)
+      assert('foo' in doc)
+      assert.equal(doc.foo, 'baz')
+
+      doc = await remote.get('doc')
+      // Reset the incoming listener
+      d = defer()
+      await remote.put({ _id: 'doc', _rev: doc._rev, moo: 'bar' })
+      // Wait for the incoming listener - everything's updated
+      await d.promise
+
+      doc = await db.get('doc')
+      assert('moo' in doc)
+      assert('foo' in doc)
+      assert('boo' in doc)
+      assert.equal(doc.foo, 'baz')
+      assert.equal(doc.moo, 'bar')
+      assert.equal(doc.boo, 'lal')
+
+      await syncHandler.cancel()
     })
   })
 }
