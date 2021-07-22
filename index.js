@@ -102,16 +102,16 @@ function transform (config) {
   handlers.bulkGet = async function (orig) {
     const res = await orig()
     const none = {}
-    const results = await Promise.all(res.results.map(function (result) {
+    const results = await Promise.all(res.results.map(async (result) => {
       if (result.id && result.docs && Array.isArray(result.docs)) {
         return {
-          docs: result.docs.map(function (doc) {
+          docs: await Promise.all(result.docs.map(async (doc) => {
             if (doc.ok) {
-              return { ok: outgoing(doc.ok) }
+              return { ok: await outgoing(doc.ok) }
             } else {
               return doc
             }
-          }),
+          })),
           id: result.id
         }
       } else {

@@ -298,6 +298,20 @@ function tests (dbName, dbType) {
       assert.notEqual(err, undefined)
     })
 
+    it('transforms on bulkGet()', async function () {
+      db.transform({
+        outgoing: async function (doc) {
+          return { ...doc, foo: 'baz' }
+        }
+      })
+
+      await db.bulkDocs([{ _id: 'toto' }, { _id: 'lala' }])
+      const docs = await db.bulkGet({ docs: [{ id: 'toto' }, { id: 'lala' }] })
+
+      assert.equal(docs.results[0].docs[0].ok.foo, 'baz')
+      assert.equal(docs.results[1].docs[0].ok.foo, 'baz')
+    })
+
     it('transforms on bulk_docs', async function () {
       db.transform({
         incoming: function (doc) {
