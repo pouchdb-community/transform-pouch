@@ -30,12 +30,15 @@ module.exports = {
 function transform (config) {
   const db = this
 
+  // create incoming handler, which transforms documents before write
   const incoming = function (doc) {
     if (!isUntransformable(doc) && config.incoming) {
       return config.incoming(doc)
     }
     return doc
   }
+
+  // create outgoing handler, which transforms documents after read
   const outgoing = function (doc) {
     if (!isUntransformable(doc) && config.outgoing) {
       return config.outgoing(doc)
@@ -47,46 +50,36 @@ function transform (config) {
     async get (orig, ...args) {
       const response = await orig(...args)
 
-      if (!Array.isArray(response)) {
+      if (Array.isArray(response)) {
+        // open_revs style, it's a list of docs
+        await Promise.all(response.map(async (row) => {
+          if (row.ok) {
+            row.ok = await outgoing(row.ok)
+          }
+        }))
+        return response
+      } else {
+        // response is just one doc
         return outgoing(response)
       }
-
-      // open_revs style, it's a list of docs
-      await Promise.all(response.map(async (row) => {
-        if (row.ok) {
-          row.ok = await outgoing(row.ok)
-        }
-      }))
-      return response
     },
 
-    async bulkDocs (orig, docs, opts, callback) {
-      if (!callback && typeof opts === 'function') {
-        callback = opts
-        opts = {}
-      }
+    async bulkDocs (orig, docs, ...args) {
       if (docs.docs) {
-        const { docs: docsArg, ...optsArg } = docs
-        docs = docsArg
-        opts = optsArg
-      }
-      try {
+        // docs can be an object and not just a list
+        docs.docs = await Promise.all(docs.docs.map(incoming))
+      } else {
+        // docs is just a list
         docs = await Promise.all(docs.map(incoming))
-        if (callback) {
-          return orig(docs, opts, callback)
-        } else {
-          return orig(docs, opts)
-        }
-      } catch (error) {
-        if (callback) { callback(error) }
-        return Promise.reject(error)
       }
+      return orig(docs, ...args)
     },
 
     async allDocs (orig, ...args) {
       const response = await orig(...args)
 
       await Promise.all(response.rows.map(async (row) => {
+        // run docs through outgoing handler if include_docs was true
         if (row.doc) {
           row.doc = await outgoing(row.doc)
         }
@@ -95,29 +88,32 @@ function transform (config) {
     },
 
     async bulkGet (orig, ...args) {
-      const res = await orig(...args)
-      const none = {}
-      const results = await Promise.all(res.results.map(async (result) => {
-        if (result.id && result.docs && Array.isArray(result.docs)) {
-          return {
-            docs: await Promise.all(result.docs.map(async (doc) => {
-              if (doc.ok) {
-                return { ok: await outgoing(doc.ok) }
-              } else {
-                return doc
-              }
-            })),
-            id: result.id
-          }
+      const mapDoc = async (doc) => {
+        // only run the outgoing handler if the doc exists ("ok")
+        if (doc.ok) {
+          return { ok: await outgoing(doc.ok) }
         } else {
-          return none
+          return doc
         }
-      }))
-      return { results }
+      }
+      const mapResult = async (result) => {
+        const { id, docs } = result
+        if (id && docs && Array.isArray(docs)) {
+          // only modify docs if everything looks ok
+          return { id, docs: await Promise.all(docs.map(mapDoc)) }
+        } else {
+          // result wasn't ok so we return it unmodified
+          return result
+        }
+      }
+      let { results, ...res } = await orig(...args)
+      results = await Promise.all(results.map(mapResult))
+      return { results, ...res }
     },
 
     changes (orig, ...args) {
       async function modifyChange (change) {
+        // transform a change only if it includes a doc
         if (change.doc) {
           change.doc = await outgoing(change.doc)
           return change
@@ -126,6 +122,7 @@ function transform (config) {
       }
 
       async function modifyChanges (res) {
+        // transform the response only if it contains results
         if (res.results) {
           res.results = await Promise.all(res.results.map(modifyChange))
           return res
@@ -137,6 +134,7 @@ function transform (config) {
       const { on: origOn, then: origThen } = changes
 
       return Object.assign(changes, {
+        // wrap all listeners, but specifically those for 'change' and 'complete'
         on (event, listener) {
           const origListener = listener
           if (event === 'change') {
@@ -144,6 +142,8 @@ function transform (config) {
               origListener(await modifyChange(change))
             }
           } else if (event === 'complete') {
+            // the 'complete' event returns all relevant changes,
+            // so we submit them all for transformation
             listener = async (res) => {
               origListener(await modifyChanges(res))
             }
@@ -151,6 +151,8 @@ function transform (config) {
           return origOn.call(changes, event, listener)
         },
 
+        // `.changes` can be awaited. it then returns all relevant changes
+        // which we pass to our handler for possible transformation
         then (resolve, reject) {
           return origThen.call(changes, modifyChanges).then(resolve, reject)
         }
@@ -159,26 +161,27 @@ function transform (config) {
   }
 
   if (db.type() === 'http') {
-    Object.assign(handlers, {
-      // Basically puts get routed through ._bulkDocs unless the adapter has a ._put method defined,
-      // which the adapter does.
-      // So wrapping .put when pouchdb is using the http adapter will fix the remote replication.
-      async put (orig, doc, ...args) {
-        doc = await incoming(doc)
-        return orig(doc, ...args)
-      },
-
-      async query (orig, ...args) {
-        const response = await orig(...args)
-
-        await Promise.all(response.rows.map(async (row) => {
-          if (row.doc) {
-            row.doc = await outgoing(row.doc)
-          }
-        }))
-        return response
-      }
-    })
+    // when using its http adapter, pouchdb uses the adapter's `._put` method,
+    // rather than `._bulkDocs`,
+    // so we have to wrap `.put` in addition to `.bulkDocs`.
+    handlers.put = async function (orig, doc, ...args) {
+      doc = await incoming(doc)
+      return orig(doc, ...args)
+    }
+    // when using its http adapter, pouchdb cannot intercept query results with `.get`
+    // so we must wrap the `.query` method directly to transform query results.
+    handlers.query = async function (orig, ...args) {
+      const response = await orig(...args)
+      await Promise.all(response.rows.map(async (row) => {
+        // modify result rows if they contain a doc
+        if (row.doc) {
+          row.doc = await outgoing(row.doc)
+        }
+        // because js passes objects by reference,
+        // there is no need to return anything after updating the row object.
+      }))
+      return response
+    }
   }
 
   wrappers.install(db, handlers)
