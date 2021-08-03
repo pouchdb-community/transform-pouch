@@ -27,8 +27,8 @@
     "test:node": "mocha test.js",
     "test:browser": "mochify --transform [ envify ] test.js",
     "build": "run-s build:main build:min",
-    "build:main": "mkdir -p dist && rollup index.js --format umd --name 'myBundle' --file dist/pouchdb.transform-pouch.js",
-    "build:min": "uglify-js dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
+    "build:main": "mkdir -p dist && rollup index.js --format umd --file dist/pouchdb.transform-pouch.js",
+    "build:min": "uglifyjs dist/pouchdb.transform-pouch.js -mc > dist/pouchdb.transform-pouch.min.js",
     "coverage": "nyc npm test"
   },
   "dependencies": {
