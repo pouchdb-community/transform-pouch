@@ -3,7 +3,7 @@ Transform Pouch
 
 [![.github/workflows/transform-pouch.yml](https://github.com/neighbourhoodie/transform-pouch/actions/workflows/transform-pouch.yml/badge.svg)](https://github.com/neighbourhoodie/transform-pouch/actions/workflows/transform-pouch.yml)
 
-Apply a *transform function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `allDocs()`, `changes()`, and also to documents added via replication.
+Apply a *transform function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `bulkGet()`, `allDocs()`, `changes()`, and also to documents added via replication.
 
 This allows you to:
 
@@ -13,27 +13,9 @@ This allows you to:
 
 *__Note:__ This plugin was formerly known as `filter-pouch`, but was renamed to be less confusing. The `filter()` API is still supported, but deprecated.*
 
-Usage
-----------
+## Usage
 
-### In the browser
-
-To use this plugin in the browser, include the `dist/pouchdb.transform-pouch.js` file after `pouchdb.js` in your HTML page:
-
-```html
-<script src="pouchdb.js"></script>
-<script src="pouchdb.transform-pouch.js"></script>
-```
-
-It's also available in Bower:
-
-```
-bower install transform-pouch
-```
-
-### In Node.js/Browserify
-
-Or to use it in Node.js, just npm install it:
+Just npm install it:
 
 ```
 npm install transform-pouch
@@ -46,8 +28,9 @@ var PouchDB = require('pouchdb');
 PouchDB.plugin(require('transform-pouch'));
 ```
 
-API
---------
+You can also use `npm run build` to compile browser-ready bundles.
+
+## API
 
 When you create a new PouchDB, you need to configure the transform functions:
 
@@ -84,11 +67,10 @@ Notes:
 * You can provide an `incoming` function, an `outgoing` function, or both.
 * Your transform function **must** return the document itself, or a new document (or a promise for such).
 * `incoming` functions apply to `put()`, `post()`, `bulkDocs()`, and incoming replications.
-* `outgoing` functions apply to `get()`, `allDocs()`, `changes()`, `query()`, and outgoing replications.
+* `outgoing` functions apply to `get()`, `allDocs()`, `bulkGet()`, `changes()`, `query()`, and outgoing replications.
 * The `incoming`/`outgoing` methods can be async or sync &ndash; just return a Promise for a doc, or the doc itself.
 
-Example: Encryption
-----------
+## Example: Encryption
 
 **Update!** Check out [crypto-pouch](https://github.com/calvinmetcalf/crypto-pouch), which is based on this plugin, and runs in both the browser and Node. The instructions below will only work in Node.
 
@@ -97,14 +79,15 @@ Using the Node.js crypto library, let's first set up our encrypt/decrypt functio
 ```js
 var crypto = require('crypto');
 
+var cipher = crypto.createCipher('aes-256-cbc', 'password');
+var decipher = crypto.createDecipher('aes-256-cbc', 'password');
+
 function encrypt(text) {
-  var cipher = crypto.createCipher('aes-256-cbc', 'password');
   var crypted = cipher.update(text, 'utf8', 'base64');
   return crypted + cipher.final('base64');
 }
 
 function decrypt(text) {
-  var decipher = crypto.createDecipher('aes-256-cbc', 'password');
   var dec = decipher.update(text, 'base64', 'utf8');
   return dec + decipher.final('utf8');
 }
@@ -159,8 +142,7 @@ whereas privileged users will see:
 
 This works for remote CouchDB databases as well.  In fact, only the encrypted data is sent over the wire, so it's ideal for protecting sensitive information.
 
-Note on query()
----------
+## Note on query()
 
 Since the remote CouchDB doesn't have accesss to the untransformed document, map/reduce functions that are executed directly against CouchDB will be applied to the untransformed version. PouchDB doesn't have this limitation, because everything is local.
 
@@ -174,43 +156,40 @@ function (doc) {
 
 ... the emitted key will be encrypted when you `query()` the remote database, but decrypted when you `query()` a local database. So be aware that the `query()` functionality is not exactly the same.
 
-Building
-----
+## Building
+
+You can build transform-pouch for the browser with `npm run build`:
+
     npm install
     npm run build
 
+This will place browser bundles, minified and unminified, in the `dist/` folder.
 
-Testing
-----
+## Testing
 
-### In Node
+You can run the test suite with `npm test`.
 
-This will run the tests in Node using LevelDB:
+To run tests in Node specifically, using LevelDB:
 
-    npm test
+    npm run test:node
 
-You can also check for 100% code coverage using:
+You can also run tests in a headless browser with [mochify](https://www.npmjs.com/package/mochify):
+
+    npm run test:browser
+
+You can also check for code coverage using:
 
     npm run coverage
 
-If you have mocha installed globally you can run single test with:
+You can run single test using options from [mocha](https://www.npmjs.com/package/mocha):
+
 ```
-TEST_DB=local mocha --reporter spec --grep search_phrase
+TEST_DB=local npm run test:node -- --reporter spec --grep search_phrase
 ```
 
-The `TEST_DB` environment variable specifies the database that PouchDB should use (see `package.json`).
+The `TEST_DB` environment variable specifies the database that PouchDB should use.
+You may specify either `local` (which uses LevelDB) or `http` (which uses the `$COUCH_URL` environment variable to connect to a CouchDB installation.)
 
-### In the browser
+# License
 
-Run `npm run dev` and then point your favorite browser to [http://127.0.0.1:8001/test/index.html](http://127.0.0.1:8001/test/index.html).
-
-The query param `?grep=mysearch` will search for tests matching `mysearch`.
-
-### Automated browser tests
-
-You can run e.g.
-
-    CLIENT=selenium:firefox npm test
-    CLIENT=selenium:phantomjs npm test
-
-This will run the tests automatically and the process will exit with a 0 or a 1 when it's done. Firefox uses IndexedDB, and PhantomJS uses WebSQL.
+[Apache-2.0](./LICENSE)

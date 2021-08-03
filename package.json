@@ -49,7 +49,6 @@
     "uglifyjs": "^2.4.11"
   },
   "files": [
-    "dist",
     "index.js"
   ]
 }

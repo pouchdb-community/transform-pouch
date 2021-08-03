@@ -11,8 +11,8 @@ jobs:
         image: couchdb
     strategy:
       matrix:
-        node: [12, 14]
-        command: [COMMAND=test, CLIENT=selenium:phantomjs COMMAND=test, COMMAND=coverage]
+        node: [12, 14, 16]
+        command: [COMMAND=test, COMMAND=coverage]
     steps:
       - uses: actions/checkout@v2
       - name: build

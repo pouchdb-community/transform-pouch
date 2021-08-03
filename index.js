@@ -90,6 +90,7 @@ function transform (config) {
     async bulkGet (orig, ...args) {
       const mapDoc = async (doc) => {
         // only run the outgoing handler if the doc exists ("ok")
+        // istanbul ignore else
         if (doc.ok) {
           return { ok: await outgoing(doc.ok) }
         } else {
@@ -98,6 +99,7 @@ function transform (config) {
       }
       const mapResult = async (result) => {
         const { id, docs } = result
+        // istanbul ignore else
         if (id && docs && Array.isArray(docs)) {
           // only modify docs if everything looks ok
           return { id, docs: await Promise.all(docs.map(mapDoc)) }

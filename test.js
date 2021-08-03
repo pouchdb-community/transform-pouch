@@ -6,10 +6,22 @@ const PouchDB = require('pouchdb')
 PouchDB.plugin(require('.'))
 
 const COUCH_URL = process.env.COUCH_URL || 'http://localhost:5984'
-const DB_NAME = 'testdb';
+const DB_NAME = 'testdb'
+const LOCAL_DB = DB_NAME
+const REMOTE_DB = COUCH_URL + '/' + DB_NAME
+let TEST_DBS
+
+// allow specifying a specific adapter (local or http) to use
+if (process.env.TEST_DB === 'local') {
+  TEST_DBS = [LOCAL_DB]
+} else if (process.env.TEST_DB === 'http') {
+  TEST_DBS = [REMOTE_DB]
+} else {
+  TEST_DBS = [LOCAL_DB, REMOTE_DB]
+}
 
 // run tests for local and http adapters
-[DB_NAME, COUCH_URL + '/' + DB_NAME].forEach(function (db) {
+TEST_DBS.forEach(function (db) {
   const dbType = /^http/.test(db) ? 'http' : 'local'
   tests(db, dbType)
 })
@@ -22,7 +34,6 @@ function tests (dbName, dbType) {
 
     beforeEach(function () {
       db = new PouchDB(dbName)
-      return db
     })
     afterEach(function () {
       return db.destroy()
