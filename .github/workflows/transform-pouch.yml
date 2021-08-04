@@ -21,6 +21,7 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
+      - run: npm ci
       # install chromium manually, for mochify
       - run: node node_modules/puppeteer/install.js
       # setup couchdb
