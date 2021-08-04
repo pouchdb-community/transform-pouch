@@ -1,8 +1,8 @@
+---
 name: Transform Pouch CI
-on:
-  push:
-    branches:
-      - master
+
+on: [pull_request, push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         node: [12, 14, 16]
-        command: [COMMAND=test, COMMAND=coverage]
+        command: [test, coverage]
     steps:
       - uses: actions/checkout@v2
       - name: build
