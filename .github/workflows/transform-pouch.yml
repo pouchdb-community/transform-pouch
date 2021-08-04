@@ -12,12 +12,22 @@ jobs:
     strategy:
       matrix:
         node: [12, 14, 16]
-        command: [COMMAND=test, COMMAND=coverage]
+        couchdb: ["2.3", "3.1"]
     steps:
       - uses: actions/checkout@v2
       - name: build
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
-      - run: |
-          npm run ${{ matrix.command }}
+      # install chromium manually, for mochify
+      - run: node node_modules/puppeteer/install.js
+      # setup couchdb
+      - uses: iamssen/couchdb-github-action@master
+        with:
+          couchdb-version: ${{ matrix.couchdb }}
+      - run: npm i -g add-cors-to-couchdb
+      - run: add-cors-to-couchdb -u admin -p password
+      # run tests
+      - run: npm test
+        env:
+          COUCH_URL: http://admin:password@localhost:5984
