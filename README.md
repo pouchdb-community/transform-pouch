@@ -1,7 +1,7 @@
 Transform Pouch
 =====
 
-[![.github/workflows/transform-pouch.yml](https://github.com/neighbourhoodie/transform-pouch/actions/workflows/transform-pouch.yml/badge.svg)](https://github.com/neighbourhoodie/transform-pouch/actions/workflows/transform-pouch.yml)
+[![.github/workflows/transform-pouch.yml](https://github.com/pouchdb-community/transform-pouch/actions/workflows/transform-pouch.yml/badge.svg)](https://github.com/pouchdb-community/transform-pouch/actions/workflows/transform-pouch.yml)
 
 Apply a *transform function* to documents before and after they are stored in the database. These functions are triggered invisibly for every `get()`, `put()`, `post()`, `bulkDocs()`, `bulkGet()`, `allDocs()`, `changes()`, and also to documents added via replication.
 

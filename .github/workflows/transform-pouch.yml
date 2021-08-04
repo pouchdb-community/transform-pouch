@@ -1,24 +1,26 @@
+---
 name: Transform Pouch CI
-on:
-  push:
-    branches:
-      - master
+
+on: [pull_request, push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    services:
-      couchdb:
-        image: couchdb
     strategy:
       matrix:
         node: [12, 14, 16]
         couchdb: ["2.3", "3.1"]
     steps:
       - uses: actions/checkout@v2
-      - name: build
-        uses: actions/setup-node@v2
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
       # install chromium manually, for mochify
       - run: node node_modules/puppeteer/install.js
       # setup couchdb
